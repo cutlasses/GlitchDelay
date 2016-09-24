@@ -2,7 +2,7 @@
 
 #include "Interface.h"
 
-class AUDIO_FREEZE_INTERFACE
+class GLITCH_DELAY_INTERFACE
 {
   static const int      LENGTH_DIAL_PIN                 = 20;
   static const int      POSITION_DIAL_PIN               = 17;
@@ -36,7 +36,7 @@ class AUDIO_FREEZE_INTERFACE
 
 public:
 
-  AUDIO_FREEZE_INTERFACE();
+  GLITCH_DELAY_INTERFACE();
 
   void          setup();
   void          update();

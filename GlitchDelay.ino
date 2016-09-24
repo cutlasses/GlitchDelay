@@ -5,29 +5,27 @@
 #include <SerialFlash.h>
 #include <Bounce.h>     // Arduino compiler can get confused if you don't include include all required headers in this file?!?
 
-#include "AudioFreezeEffect.h"
-#include "AudioFreezeInterface.h"
+//#include "AudioFreezeEffect.h"
+#include "GlitchDelayInterface.h"
 #include "CompileSwitches.h"
 #include "Util.h"
 
-#define MIX_FREEZE_CHANNEL    0
-#define MIX_ORIGINAL_CHANNEL  1
-
 
 AudioInputI2S            audio_input;
-AUDIO_FREEZE_EFFECT      audio_freeze_effect;
+//AUDIO_FREEZE_EFFECT      audio_freeze_effect;
 AudioMixer4              audio_mixer;
+AudioEffectDelay         audio_delay;
 AudioOutputI2S           audio_output;
 
-AudioConnection          patch_cord_L1( audio_input, 0, audio_freeze_effect, MIX_FREEZE_CHANNEL );
-AudioConnection          patch_cord_L2( audio_freeze_effect, 0, audio_mixer, 0 );
-AudioConnection          patch_cord_L3( audio_input, 0, audio_mixer, MIX_ORIGINAL_CHANNEL );
-AudioConnection          patch_cord_L4( audio_mixer, 0, audio_output, 0 );
+AudioConnection          patch_cord_L1( audio_input, 0, audio_mixer, 0 );
+AudioConnection          patch_cord_L2( audio_mixer, 0, audio_delay, 0 );
+AudioConnection          patch_cord_L3( audio_delay, 0, audio_mixer, 1 );
+AudioConnection          patch_cord_L4( audio_delay, 0, audio_output, 0 );
 //AudioConnection          patch_cord_L1( audio_input, 0, audio_output, 0 );    // left channel passes straight through (for testing)
 AudioConnection          patch_cord_R1( audio_input, 1, audio_output, 1 );      // right channel passes straight through
 AudioControlSGTL5000     sgtl5000_1;
 
-AUDIO_FREEZE_INTERFACE   audio_freeze_interface;
+GLITCH_DELAY_INTERFACE   glitch_delay_interface;
 
 //////////////////////////////////////
 
@@ -35,7 +33,7 @@ void setup()
 {
   Serial.begin(9600);
 
-  AudioMemory(8);
+  AudioMemory(120);
   
   sgtl5000_1.enable();
   sgtl5000_1.volume(0.8f);
@@ -46,7 +44,12 @@ void setup()
   SPI.setMOSI(7);
   SPI.setSCK(14);
 
-  audio_freeze_interface.setup();
+  glitch_delay_interface.setup();
+
+  audio_delay.delay(0, 110);
+
+  audio_mixer.gain( 0, 0.5f );
+  audio_mixer.gain( 1, 0.25f );
 
   delay(1000);
   
@@ -56,7 +59,8 @@ void setup()
 }
 
 void loop()
-{  
+{
+  /*  
   audio_freeze_interface.update();
 
   if( audio_freeze_interface.freeze_button().active() != audio_freeze_effect.is_freeze_active() )
@@ -98,8 +102,8 @@ void loop()
     {
       audio_freeze_effect.set_bit_depth( 16 );
     }
-  }
-
+    */
+    
 #ifdef DEBUG_OUTPUT
 //  const int processor_usage = AudioProcessorUsage();
 //  if( processor_usage > 30 )

@@ -1,3 +1,4 @@
+/*
 #pragma once
 
 #include <AudioStream.h>
@@ -66,4 +67,5 @@ public:
   void                  set_reverse( bool reverse );
   void                  set_bit_depth( int sample_size_in_bits );
 };
+*/
 

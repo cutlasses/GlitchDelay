@@ -1,3 +1,4 @@
+/*
 #include <Audio.h>
 #include <Wire.h>
 #include <SPI.h>
@@ -5,7 +6,7 @@
 #include <SerialFlash.h>
 
 #include <Math.h>
-#include "AudioFreezeEffect.h"
+#include "GlitchDelayEffect.h"
 #include "CompileSwitches.h"
 
 const float MIN_SPEED( 0.25f );
@@ -453,5 +454,4 @@ void AUDIO_FREEZE_EFFECT::set_bit_depth( int sample_size_in_bits )
   m_next_sample_size_in_bits = sample_size_in_bits;
   //set_bit_depth_impl( sample_size_in_bits );
 }
-
-
+*/

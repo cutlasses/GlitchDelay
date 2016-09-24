@@ -1,7 +1,7 @@
-#include "AudioFreezeInterface.h"
+#include "GlitchDelayInterface.h"
 #include "CompileSwitches.h"
   
-AUDIO_FREEZE_INTERFACE::AUDIO_FREEZE_INTERFACE() :
+GLITCH_DELAY_INTERFACE::GLITCH_DELAY_INTERFACE() :
   m_length_dial( LENGTH_DIAL_PIN ),
   m_position_dial( POSITION_DIAL_PIN ),
   m_speed_dial( SPEED_DIAL_PIN ),
@@ -18,7 +18,7 @@ AUDIO_FREEZE_INTERFACE::AUDIO_FREEZE_INTERFACE() :
   m_leds[2] = LED( LED_3_PIN ); 
 }
 
-void AUDIO_FREEZE_INTERFACE::setup()
+void GLITCH_DELAY_INTERFACE::setup()
 {
   m_freeze_button.setup();
   m_mode_button.setup();
@@ -30,7 +30,7 @@ void AUDIO_FREEZE_INTERFACE::setup()
   }
 }
 
-void AUDIO_FREEZE_INTERFACE::update()
+void GLITCH_DELAY_INTERFACE::update()
 {
   int32_t time_in_ms = millis();
   
@@ -125,37 +125,37 @@ void AUDIO_FREEZE_INTERFACE::update()
 #endif // DEBUG_OUTPUT
 }
 
-const DIAL& AUDIO_FREEZE_INTERFACE::length_dial() const
+const DIAL& GLITCH_DELAY_INTERFACE::length_dial() const
 {
   return m_length_dial;
 }
 
-const DIAL& AUDIO_FREEZE_INTERFACE::position_dial() const
+const DIAL& GLITCH_DELAY_INTERFACE::position_dial() const
 {
   return m_position_dial;
 }
 
-const DIAL& AUDIO_FREEZE_INTERFACE::speed_dial() const
+const DIAL& GLITCH_DELAY_INTERFACE::speed_dial() const
 {
   return m_speed_dial;
 }
 
-const DIAL& AUDIO_FREEZE_INTERFACE::mix_dial() const
+const DIAL& GLITCH_DELAY_INTERFACE::mix_dial() const
 {
   return m_mix_dial;
 }
 
-const BUTTON& AUDIO_FREEZE_INTERFACE::freeze_button() const
+const BUTTON& GLITCH_DELAY_INTERFACE::freeze_button() const
 {
   return m_freeze_button;
 }
 
-int AUDIO_FREEZE_INTERFACE::mode() const
+int GLITCH_DELAY_INTERFACE::mode() const
 {
   return m_current_mode;
 }
 
-bool AUDIO_FREEZE_INTERFACE::reduced_bit_depth() const
+bool GLITCH_DELAY_INTERFACE::reduced_bit_depth() const
 {
   return m_reduced_bit_depth;
 }
