@@ -6,7 +6,7 @@ class GLITCH_DELAY_INTERFACE
 {
   static const int      LENGTH_DIAL_PIN                 = 20;
   static const int      POSITION_DIAL_PIN               = 17;
-  static const int      SPEED_DIAL_PIN                  = 21;
+  static const int      FEEDBACK_DIAL_PIN               = 21;
   static const int      MIX_DIAL_PIN                    = 16;
   static const int      FREEZE_BUTTON_PIN               = 2;
   static const int      MODE_BUTTON_PIN                 = 1;
@@ -22,7 +22,7 @@ class GLITCH_DELAY_INTERFACE
   
   DIAL              m_length_dial;
   DIAL              m_position_dial;
-  DIAL              m_speed_dial;
+  DIAL              m_feedback_dial;
   DIAL              m_mix_dial;
 
   BUTTON            m_freeze_button;
@@ -43,7 +43,7 @@ public:
 
   const DIAL&   length_dial() const;
   const DIAL&   position_dial() const;
-  const DIAL&   speed_dial() const;
+  const DIAL&   feedback_dial() const;
   const DIAL&   mix_dial() const;
   const BUTTON& freeze_button() const;
 

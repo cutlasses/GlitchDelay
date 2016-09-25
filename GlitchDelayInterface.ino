@@ -4,7 +4,7 @@
 GLITCH_DELAY_INTERFACE::GLITCH_DELAY_INTERFACE() :
   m_length_dial( LENGTH_DIAL_PIN ),
   m_position_dial( POSITION_DIAL_PIN ),
-  m_speed_dial( SPEED_DIAL_PIN ),
+  m_feedback_dial( FEEDBACK_DIAL_PIN ),
   m_mix_dial( MIX_DIAL_PIN ),
   m_freeze_button( FREEZE_BUTTON_PIN, FREEZE_BUTTON_IS_TOGGLE ),
   m_mode_button( MODE_BUTTON_PIN, false ),
@@ -36,7 +36,7 @@ void GLITCH_DELAY_INTERFACE::update()
   
   m_length_dial.update() ;
   m_position_dial.update();
-  m_speed_dial.update();
+  m_feedback_dial.update();
   m_mix_dial.update();
   
   m_freeze_button.update( time_in_ms );
@@ -135,9 +135,9 @@ const DIAL& GLITCH_DELAY_INTERFACE::position_dial() const
   return m_position_dial;
 }
 
-const DIAL& GLITCH_DELAY_INTERFACE::speed_dial() const
+const DIAL& GLITCH_DELAY_INTERFACE::feedback_dial() const
 {
-  return m_speed_dial;
+  return m_feedback_dial;
 }
 
 const DIAL& GLITCH_DELAY_INTERFACE::mix_dial() const
