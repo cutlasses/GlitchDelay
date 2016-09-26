@@ -75,7 +75,8 @@ void loop()
 {
   glitch_delay_interface.update();
 
-  audio_glitch_delay_effect.set_delay_time( glitch_delay_interface.delay_dial().value() );
+  const float delay = clamp( glitch_delay_interface.delay_dial().value(), 0.0f, 1.0f );
+  audio_glitch_delay_effect.set_delay_time( delay );
 
   const float wet_dry = clamp( glitch_delay_interface.mix_dial().value(), 0.0f, 1.0f );
   audio_wet_dry_mixer.gain( DRY_CHANNEL, 1.0f - wet_dry );
