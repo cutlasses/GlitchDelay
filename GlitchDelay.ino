@@ -5,17 +5,17 @@
 #include <SerialFlash.h>
 #include <Bounce.h>     // Arduino compiler can get confused if you don't include include all required headers in this file?!?
 
-//#include "AudioFreezeEffect.h"
+#include "GlitchDelayEffect.h"
 #include "GlitchDelayInterface.h"
 #include "CompileSwitches.h"
 #include "Util.h"
 
 
 AudioInputI2S            audio_input;
-//AUDIO_FREEZE_EFFECT      audio_freeze_effect;
+GLITCH_DELAY_EFFECT      audio_glitch_delay_effect;
 AudioMixer4              audio_delay_mixer;
 AudioMixer4              audio_wet_dry_mixer;
-AudioEffectDelay         audio_delay;
+//AudioEffectDelay         audio_delay;
 AudioOutputI2S           audio_output;
 
 const int DRY_CHANNEL( 0 );
@@ -25,9 +25,10 @@ const int FEEDBACK_CHANNEL( 1 );
 const float MAX_FEEDBACK( 0.75f );
 
 AudioConnection          patch_cord_L1( audio_input, 0, audio_delay_mixer, 0 );
-AudioConnection          patch_cord_L2( audio_delay_mixer, 0, audio_delay, 0 );
-AudioConnection          patch_cord_L3( audio_delay, 0, audio_delay_mixer, FEEDBACK_CHANNEL );
-AudioConnection          patch_cord_L4( audio_delay, 0, audio_wet_dry_mixer, WET_CHANNEL );
+//AudioConnection          patch_cord_L2( audio_delay_mixer, 0, audio_delay, 0 );
+AudioConnection          patch_cord_L2( audio_delay_mixer, 0, audio_glitch_delay_effect, 0 );
+AudioConnection          patch_cord_L3( audio_glitch_delay_effect, 0, audio_delay_mixer, FEEDBACK_CHANNEL );
+AudioConnection          patch_cord_L4( audio_glitch_delay_effect, 0, audio_wet_dry_mixer, WET_CHANNEL );
 AudioConnection          patch_cord_L5( audio_input, 0, audio_wet_dry_mixer, DRY_CHANNEL );
 AudioConnection          patch_cord_L6( audio_wet_dry_mixer, 0, audio_output, 0 );
 //AudioConnection          patch_cord_L1( audio_input, 0, audio_output, 0 );    // left channel passes straight through (for testing)
@@ -42,7 +43,7 @@ void setup()
 {
   Serial.begin(9600);
 
-  AudioMemory(120);
+  AudioMemory(8);
   
   sgtl5000_1.enable();
   sgtl5000_1.volume(0.8f);
@@ -55,7 +56,7 @@ void setup()
 
   glitch_delay_interface.setup();
 
-  audio_delay.delay(0, 300);
+  //audio_delay.delay(0, 300);
 
   audio_wet_dry_mixer.gain( DRY_CHANNEL, 0.5f );
   audio_wet_dry_mixer.gain( WET_CHANNEL, 0.5f );
@@ -74,56 +75,14 @@ void loop()
 {
   glitch_delay_interface.update();
 
+  audio_glitch_delay_effect.set_delay_time( glitch_delay_interface.delay_dial().value() );
+
   const float wet_dry = clamp( glitch_delay_interface.mix_dial().value(), 0.0f, 1.0f );
   audio_wet_dry_mixer.gain( DRY_CHANNEL, 1.0f - wet_dry );
   audio_wet_dry_mixer.gain( WET_CHANNEL, wet_dry );
 
   const float feedback = glitch_delay_interface.feedback_dial().value();
   audio_delay_mixer.gain( FEEDBACK_CHANNEL, feedback * MAX_FEEDBACK );
-  
-  /*  
-  audio_freeze_interface.update();
-
-  if( audio_freeze_interface.freeze_button().active() != audio_freeze_effect.is_freeze_active() )
-  {
-    audio_freeze_effect.set_freeze( audio_freeze_interface.freeze_button().active() );
-  }
-
-  audio_freeze_effect.set_length( audio_freeze_interface.length_dial().value() );
-  audio_freeze_effect.set_centre( audio_freeze_interface.position_dial().value() );
-  audio_freeze_effect.set_speed( audio_freeze_interface.speed_dial().value() );
-
-  if( audio_freeze_interface.mode() == 1 )
-  {
-    audio_freeze_effect.set_reverse( true );
-  }
-  else
-  {
-    audio_freeze_effect.set_reverse( false );
-  }
-
-  if( audio_freeze_interface.freeze_button().active() )
-  {
-    const float freeze_mix_amount = clamp( audio_freeze_interface.mix_dial().value(), 0.0f, 1.0f );
-    
-    audio_mixer.gain( MIX_FREEZE_CHANNEL, freeze_mix_amount );
-    audio_mixer.gain( MIX_ORIGINAL_CHANNEL, 1.0f - freeze_mix_amount );
-  }
-  else
-  {
-    audio_mixer.gain( MIX_FREEZE_CHANNEL, 0.0f );
-    audio_mixer.gain( MIX_ORIGINAL_CHANNEL, 1.0f );
-
-    // only adjust bit-depth when freeze is not active, need to write the data in the new bit-depth before it can be played
-    if( audio_freeze_interface.reduced_bit_depth() )
-    {
-      audio_freeze_effect.set_bit_depth( 8 );
-    }
-    else
-    {
-      audio_freeze_effect.set_bit_depth( 16 );
-    }
-    */
     
 #ifdef DEBUG_OUTPUT
 //  const int processor_usage = AudioProcessorUsage();
