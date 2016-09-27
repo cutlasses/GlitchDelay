@@ -27,11 +27,11 @@ GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
   m_buffer(),
   m_input_queue_array(),
   m_write_head(0),
-  m_play_head_offset_in_samples(0),
+  m_play_head_offset_in_samples(1),
   m_sample_size_in_bits(16),
   m_buffer_size_in_samples( delay_buffer_size_in_samples( 16 ) ),
   m_next_sample_size_in_bits(16),
-  m_next_play_head_offset_in_samples(0)
+  m_next_play_head_offset_in_samples(1)
 {
   memset( m_buffer, 0, sizeof(m_buffer) );
 }
@@ -87,7 +87,16 @@ int16_t GLITCH_DELAY_EFFECT::read_sample( int index ) const
 
 int GLITCH_DELAY_EFFECT::calculate_play_head() const
 {
-  return ( m_write_head + m_play_head_offset_in_samples ) % m_buffer_size_in_samples;
+  ASSERT_MSG( m_play_head_offset_in_samples > 0 && m_play_head_offset_in_samples < m_buffer_size_in_samples - 1, "GLITCH_DELAY_EFFECT::calculate_play_head()" );
+  
+  int play_head = m_write_head - m_play_head_offset_in_samples;
+  if( play_head < 0 )
+  {
+    play_head = m_buffer_size_in_samples + play_head;
+  }
+
+  ASSERT_MSG( play_head > 0 && play_head < m_buffer_size_in_samples, "GLITCH_DELAY_EFFECT::calculate_play_head()" );
+  return play_head;
 }
 
 void GLITCH_DELAY_EFFECT::write_to_buffer( const int16_t* source, int size )
@@ -126,7 +135,8 @@ void GLITCH_DELAY_EFFECT::update()
   set_bit_depth_impl( m_next_sample_size_in_bits);
   set_play_head_offset_in_samples_impl( m_next_play_head_offset_in_samples );
 
-  ASSERT_MSG( m_head >= 0 && m_head < m_buffer_size_in_samples, "GLITCH_DELAY_EFFECT::update()" );
+  ASSERT_MSG( m_write_head >= 0 && m_write_head < m_buffer_size_in_samples, "GLITCH_DELAY_EFFECT::update()" );
+  ASSERT_MSG( m_next_play_head_offset_in_samples >= 0 && m_next_play_head_offset_in_samples < m_buffer_size_in_samples - 1, "GLITCH_DELAY_EFFECT::update()" );
 
   // write incoming audio into the buffer
   audio_block_t* block        = receiveWritable();
@@ -140,6 +150,10 @@ void GLITCH_DELAY_EFFECT::update()
     transmit( block, 0 );
   
     release( block );
+  }
+  else
+  {
+    Serial.print("alloc fail/n");
   }
 }
 
@@ -164,13 +178,16 @@ void GLITCH_DELAY_EFFECT::set_bit_depth_impl( int sample_size_in_bits )
 
 void GLITCH_DELAY_EFFECT::set_play_head_offset_in_samples_impl( int play_head_offset_in_samples )
 {
+  ASSERT_MSG( play_head_offset_in_samples >= 0 && play_head_offset_in_samples < m_buffer_size_in_samples - 1, "GLITCH_DELAY_EFFECT::set_play_head_offset_in_samples_impl()" );
   m_play_head_offset_in_samples = play_head_offset_in_samples;
 }
 
-
 void GLITCH_DELAY_EFFECT::set_delay_time( float ratio_of_max_delay )
 {
-  m_next_play_head_offset_in_samples = trunc_to_int( ratio_of_max_delay * ( m_buffer_size_in_samples - 1 ) );
+  ASSERT_MSG( ratio_of_max_delay >= 0.0f && ratio_of_max_delay <= 1.0f, "GLITCH_DELAY_EFFECT::set_delay_time()" );
+  m_next_play_head_offset_in_samples = lerp<int>( 1, m_buffer_size_in_samples - 1, ratio_of_max_delay );
+  //m_next_play_head_offset_in_samples = trunc_to_int( ratio_of_max_delay * ( m_buffer_size_in_samples - 1 ) );
+  ASSERT_MSG( m_next_play_head_offset_in_samples >= 0 && m_next_play_head_offset_in_samples < m_buffer_size_in_samples - 1, "GLITCH_DELAY_EFFECT::set_delay_time()" );
 }
 
 void GLITCH_DELAY_EFFECT::set_bit_depth( int sample_size_in_bits )

@@ -43,7 +43,7 @@ void setup()
 {
   Serial.begin(9600);
 
-  AudioMemory(8);
+  AudioMemory(16);
   
   sgtl5000_1.enable();
   sgtl5000_1.volume(0.8f);
@@ -67,7 +67,7 @@ void setup()
   delay(1000);
   
 #ifdef DEBUG_OUTPUT
-  Serial.print("Setup finished\n");
+  Serial.print("Setup finished!\n");
 #endif // DEBUG_OUTPUT
 }
 
@@ -86,13 +86,13 @@ void loop()
   audio_delay_mixer.gain( FEEDBACK_CHANNEL, feedback * MAX_FEEDBACK );
     
 #ifdef DEBUG_OUTPUT
-//  const int processor_usage = AudioProcessorUsage();
-//  if( processor_usage > 30 )
-//  {
-//    Serial.print( "Performance spike: " );
-//    Serial.print( processor_usage );
-//    Serial.print( "\n" );
-//  }
+  const int processor_usage = AudioProcessorUsage();
+  if( processor_usage > 30 )
+  {
+    Serial.print( "Performance spike: " );
+    Serial.print( processor_usage );
+    Serial.print( "\n" );
+  }
 #endif
 }
 
