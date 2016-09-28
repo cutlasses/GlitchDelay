@@ -27,7 +27,7 @@ class GLITCH_DELAY_EFFECT : public AudioStream
   int                   calculate_play_head() const;
   
   void                  write_to_buffer( const int16_t* source, int size );
-  void                  read_from_buffer( int16_t* dest, int size );
+  void                  read_from_buffer( int16_t* dest, int size, int play_head );
  
   void                  set_bit_depth_impl( int sample_size_in_bits );
   void                  set_play_head_offset_in_samples_impl( int play_head_offset_in_samples );

@@ -44,6 +44,7 @@ void GLITCH_DELAY_EFFECT::write_sample( int16_t sample, int index )
   {
     case 8:
     {
+      Serial.print("8 bit\n");
       int8_t sample8                      = (sample >> 8) & 0xff;
       int8_t* sample_buffer               = reinterpret_cast<int8_t*>(m_buffer);
       sample_buffer[ index ]              = sample8;
@@ -66,6 +67,7 @@ int16_t GLITCH_DELAY_EFFECT::read_sample( int index ) const
   {
     case 8:
     {
+        Serial.print("8 bit\n");
         const int8_t* sample_buffer    = reinterpret_cast<const int8_t*>(m_buffer);
         const int8_t sample            = sample_buffer[ index ];
 
@@ -114,9 +116,8 @@ void GLITCH_DELAY_EFFECT::write_to_buffer( const int16_t* source, int size )
   }
 }
 
-void GLITCH_DELAY_EFFECT::read_from_buffer( int16_t* dest, int size )
+void GLITCH_DELAY_EFFECT::read_from_buffer( int16_t* dest, int size, int play_head )
 {
-  int play_head = calculate_play_head();
   ASSERT_MSG( play_head >= 0 && play_head < m_buffer_size_in_samples, "GLITCH_DELAY_EFFECT::read_from_buffer()" );
  
   for( int x = 0; x < size; ++x )
@@ -138,14 +139,32 @@ void GLITCH_DELAY_EFFECT::update()
   ASSERT_MSG( m_write_head >= 0 && m_write_head < m_buffer_size_in_samples, "GLITCH_DELAY_EFFECT::update()" );
   ASSERT_MSG( m_next_play_head_offset_in_samples >= 0 && m_next_play_head_offset_in_samples < m_buffer_size_in_samples - 1, "GLITCH_DELAY_EFFECT::update()" );
 
+  audio_block_t* out_block          = allocate();
+
+  if( out_block != nullptr )
+  {
+    const int play_head       = calculate_play_head();
+    read_from_buffer( out_block->data, AUDIO_BLOCK_SAMPLES, play_head );
+
+    release( out_block );
+  }
+
+  audio_block_t* in_block           = receiveReadOnly();
+  if( in_block != nullptr )
+  {
+    write_to_buffer( in_block->data, AUDIO_BLOCK_SAMPLES ); 
+    transmit( in_block, 0 );   
+  }
   // write incoming audio into the buffer
+/*
   audio_block_t* block        = receiveWritable();
 
   if( block != nullptr )
   {
+    const int play_head       = calculate_play_head();
     write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
-
-    read_from_buffer( block->data, AUDIO_BLOCK_SAMPLES );
+  
+    read_from_buffer( block->data, AUDIO_BLOCK_SAMPLES, play_head );
   
     transmit( block, 0 );
   
@@ -155,6 +174,7 @@ void GLITCH_DELAY_EFFECT::update()
   {
     Serial.print("alloc fail/n");
   }
+*/
 }
 
 void GLITCH_DELAY_EFFECT::set_bit_depth_impl( int sample_size_in_bits )
