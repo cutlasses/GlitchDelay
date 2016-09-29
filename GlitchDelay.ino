@@ -129,6 +129,15 @@ void loop()
   const float feedback = glitch_delay_interface.feedback_dial().value();
   delay_mixer.gain( FEEDBACK_CHANNEL, feedback * MAX_FEEDBACK );
 
+  if( glitch_delay_interface.reduced_bit_depth() )
+  {
+    audio_glitch_delay_effect.set_bit_depth( 8 );
+  }
+  else
+  {
+    audio_glitch_delay_effect.set_bit_depth( 16 );
+  }
+
 #ifdef DEBUG_OUTPUT
 /*
   static int count = 0;

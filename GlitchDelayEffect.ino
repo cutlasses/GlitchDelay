@@ -53,7 +53,6 @@ void GLITCH_DELAY_EFFECT::write_sample( int16_t sample, int index )
   {
     case 8:
     {
-      Serial.print("8 bit\n");
       int8_t sample8                      = (sample >> 8) & 0xff;
       int8_t* sample_buffer               = reinterpret_cast<int8_t*>(m_buffer);
       sample_buffer[ index ]              = sample8;
@@ -76,8 +75,7 @@ int16_t GLITCH_DELAY_EFFECT::read_sample( int index ) const
   {
     case 8:
     {
-        Serial.print("8 bit\n");
-        const int8_t* sample_buffer    = reinterpret_cast<const int8_t*>(m_buffer);
+         const int8_t* sample_buffer    = reinterpret_cast<const int8_t*>(m_buffer);
         const int8_t sample            = sample_buffer[ index ];
 
         int16_t sample16               = sample;
