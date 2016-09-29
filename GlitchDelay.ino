@@ -75,15 +75,39 @@ void loop()
 {
   glitch_delay_interface.update();
 
-  const float delay = clamp( glitch_delay_interface.delay_dial().value(), 0.0f, 1.0f );
-  audio_glitch_delay_effect.set_delay_time( delay );
+  //const float delay = clamp( glitch_delay_interface.delay_dial().value(), 0.0f, 1.0f );
+  //audio_glitch_delay_effect.set_delay_time( delay );
+  audio_glitch_delay_effect.set_delay_time( 0.0f );
 
   const float wet_dry = clamp( glitch_delay_interface.mix_dial().value(), 0.0f, 1.0f );
   audio_wet_dry_mixer.gain( DRY_CHANNEL, 1.0f - wet_dry );
   audio_wet_dry_mixer.gain( WET_CHANNEL, wet_dry );
-
+  
   const float feedback = glitch_delay_interface.feedback_dial().value();
   audio_delay_mixer.gain( FEEDBACK_CHANNEL, feedback * MAX_FEEDBACK );
+
+#ifdef DEBUG_OUTPUT
+/*
+  static int count = 0;
+  if( ++count % 1000 == 0 )
+  {
+    Serial.print("delay ");
+    Serial.print(delay);
+    Serial.print("\n");
+  
+    Serial.print("mix ");
+    Serial.print(wet_dry);
+    Serial.print("\n");
+  
+    Serial.print("feedback ");
+    Serial.print(feedback * MAX_FEEDBACK);
+    Serial.print("\n");
+  
+    Serial.print("****\n");
+  }
+*/
+     
+#endif // DEBUG_OUTPUT
     
 #ifdef DEBUG_OUTPUT
   const int processor_usage = AudioProcessorUsage();
