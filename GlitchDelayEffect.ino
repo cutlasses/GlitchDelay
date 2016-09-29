@@ -187,8 +187,18 @@ void GLITCH_DELAY_EFFECT::set_play_head_offset_in_samples_impl( int play_head_of
 void GLITCH_DELAY_EFFECT::set_delay_time( float ratio_of_max_delay )
 {
   ASSERT_MSG( ratio_of_max_delay >= 0.0f && ratio_of_max_delay <= 1.0f, "GLITCH_DELAY_EFFECT::set_delay_time()" );
+
+  // quantize to 32 steps to avoid small fluctuations
+  ratio_of_max_delay = ( static_cast<int>( ratio_of_max_delay * 32.0f ) ) / 32.0f;
+  
   m_next_play_head_offset_in_samples = trunc_to_int( ratio_of_max_delay * ( m_buffer_size_in_samples - AUDIO_BLOCK_SAMPLES ) );
   ASSERT_MSG( m_next_play_head_offset_in_samples >= 0 && m_next_play_head_offset_in_samples <= m_buffer_size_in_samples - AUDIO_BLOCK_SAMPLES, "GLITCH_DELAY_EFFECT::set_delay_time()" );
+
+#ifdef DEBUG_OUTPUT
+      Serial.print("m_next_play_head_offset_in_samples:");
+      Serial.print( m_next_play_head_offset_in_samples );
+      Serial.print("\n");
+#endif
 }
 
 void GLITCH_DELAY_EFFECT::set_bit_depth( int sample_size_in_bits )
