@@ -203,7 +203,7 @@ void GLITCH_DELAY_EFFECT::set_play_head_offset_in_samples_impl( int play_head_of
 
 void GLITCH_DELAY_EFFECT::set_freeze_impl( bool active )
 {
-  m_freeze_active   = true;
+  m_freeze_active   = active;
   m_write_head      = 0;   // use the write head as the play head when frozen
 }
 
