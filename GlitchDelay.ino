@@ -12,9 +12,9 @@
 
 
 AudioInputI2S            audio_input;
-GLITCH_DELAY_EFFECT      audio_glitch_delay_effect;
-AudioMixer4              audio_delay_mixer;
-AudioMixer4              audio_wet_dry_mixer;
+GLITCH_DELAY_EFFECT      glitch_delay_effect;
+AudioMixer4              delay_mixer;
+AudioMixer4              wet_dry_mixer;
 //AudioEffectDelay         audio_delay;
 AudioOutputI2S           audio_output;
 
@@ -24,13 +24,13 @@ const int FEEDBACK_CHANNEL( 1 );
 
 const float MAX_FEEDBACK( 0.75f );
 
-AudioConnection          patch_cord_L1( audio_input, 0, audio_delay_mixer, 0 );
-//AudioConnection          patch_cord_L2( audio_delay_mixer, 0, audio_delay, 0 );
-AudioConnection          patch_cord_L2( audio_delay_mixer, 0, audio_glitch_delay_effect, 0 );
-AudioConnection          patch_cord_L3( audio_glitch_delay_effect, 0, audio_delay_mixer, FEEDBACK_CHANNEL );
-AudioConnection          patch_cord_L4( audio_glitch_delay_effect, 0, audio_wet_dry_mixer, WET_CHANNEL );
-AudioConnection          patch_cord_L5( audio_input, 0, audio_wet_dry_mixer, DRY_CHANNEL );
-AudioConnection          patch_cord_L6( audio_wet_dry_mixer, 0, audio_output, 0 );
+AudioConnection          patch_cord_L1( audio_input, 0, delay_mixer, 0 );
+//AudioConnection          patch_cord_L2( delay_mixer, 0, audio_delay, 0 );
+AudioConnection          patch_cord_L2( delay_mixer, 0, glitch_delay_effect, 0 );
+AudioConnection          patch_cord_L3( glitch_delay_effect, 0, delay_mixer, FEEDBACK_CHANNEL );
+AudioConnection          patch_cord_L4( glitch_delay_effect, 0, wet_dry_mixer, WET_CHANNEL );
+AudioConnection          patch_cord_L5( audio_input, 0, wet_dry_mixer, DRY_CHANNEL );
+AudioConnection          patch_cord_L6( wet_dry_mixer, 0, audio_output, 0 );
 //AudioConnection          patch_cord_L1( audio_input, 0, audio_output, 0 );    // left channel passes straight through (for testing)
 AudioConnection          patch_cord_R1( audio_input, 1, audio_output, 1 );      // right channel passes straight through
 AudioControlSGTL5000     sgtl5000_1;
@@ -58,11 +58,11 @@ void setup()
 
   //audio_delay.delay(0, 300);
 
-  audio_wet_dry_mixer.gain( DRY_CHANNEL, 0.5f );
-  audio_wet_dry_mixer.gain( WET_CHANNEL, 0.5f );
+  wet_dry_mixer.gain( DRY_CHANNEL, 0.5f );
+  wet_dry_mixer.gain( WET_CHANNEL, 0.5f );
 
-  audio_delay_mixer.gain( 0, 0.5f );
-  audio_delay_mixer.gain( 1, 0.25f );
+  delay_mixer.gain( 0, 0.5f );
+  delay_mixer.gain( 1, 0.25f );
 
   delay(1000);
   
@@ -75,16 +75,21 @@ void loop()
 {
   glitch_delay_interface.update();
 
+  if( glitch_delay_interface.freeze_button().active() != glitch_delay_effect.freeze_active() )
+  {
+    glitch_delay_effect.set_freeze( glitch_delay_interface.freeze_button().active() );
+  }
+
   const float delay = clamp( glitch_delay_interface.delay_dial().value(), 0.0f, 1.0f );
-  audio_glitch_delay_effect.set_delay_time( delay );
-  //audio_glitch_delay_effect.set_delay_time( 0.0f );
+  glitch_delay_effect.set_delay_time( delay );
+  //glitch_delay_effect.set_delay_time( 0.0f );
 
   const float wet_dry = clamp( glitch_delay_interface.mix_dial().value(), 0.0f, 1.0f );
-  audio_wet_dry_mixer.gain( DRY_CHANNEL, 1.0f - wet_dry );
-  audio_wet_dry_mixer.gain( WET_CHANNEL, wet_dry );
+  wet_dry_mixer.gain( DRY_CHANNEL, 1.0f - wet_dry );
+  wet_dry_mixer.gain( WET_CHANNEL, wet_dry );
   
   const float feedback = glitch_delay_interface.feedback_dial().value();
-  audio_delay_mixer.gain( FEEDBACK_CHANNEL, feedback * MAX_FEEDBACK );
+  delay_mixer.gain( FEEDBACK_CHANNEL, feedback * MAX_FEEDBACK );
 
 #ifdef DEBUG_OUTPUT
 /*

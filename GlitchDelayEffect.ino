@@ -30,6 +30,7 @@ GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
   m_play_head_offset_in_samples(1),
   m_sample_size_in_bits(16),
   m_buffer_size_in_samples( delay_buffer_size_in_samples( 16 ) ),
+  m_freeze_active(false),
   m_next_sample_size_in_bits(16),
   m_next_play_head_offset_in_samples(1)
 {
@@ -117,7 +118,7 @@ void GLITCH_DELAY_EFFECT::write_to_buffer( const int16_t* source, int size )
   }
 }
 
-void GLITCH_DELAY_EFFECT::read_from_buffer( int16_t* dest, int size, int play_head )
+int GLITCH_DELAY_EFFECT::read_from_buffer( int16_t* dest, int size, int play_head )
 {
   ASSERT_MSG( play_head >= 0 && play_head < m_buffer_size_in_samples, "GLITCH_DELAY_EFFECT::read_from_buffer()" );
  
@@ -130,6 +131,13 @@ void GLITCH_DELAY_EFFECT::read_from_buffer( int16_t* dest, int size, int play_he
       play_head               = 0;
     } 
   }
+
+  return play_head;
+}
+
+bool GLITCH_DELAY_EFFECT::freeze_active() const
+{
+  return m_freeze_active;
 }
 
 void GLITCH_DELAY_EFFECT::update()
@@ -140,22 +148,31 @@ void GLITCH_DELAY_EFFECT::update()
   ASSERT_MSG( m_write_head >= 0 && m_write_head < m_buffer_size_in_samples, "GLITCH_DELAY_EFFECT::update()" );
   ASSERT_MSG( m_next_play_head_offset_in_samples >= 0 && m_next_play_head_offset_in_samples < m_buffer_size_in_samples - 1, "GLITCH_DELAY_EFFECT::update()" );
 
-  audio_block_t* block        = receiveWritable();
-
-  if( block != nullptr )
+  if( m_freeze_active )
   {
-    const int play_head       = calculate_play_head();
-    write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
-  
-    read_from_buffer( block->data, AUDIO_BLOCK_SAMPLES, play_head );
-  
+    audio_block_t* block        = allocate();
+
+    m_write_head                = read_from_buffer( block->data, AUDIO_BLOCK_SAMPLES, m_write_head );
+
     transmit( block, 0 );
-  
+    
     release( block );
   }
   else
   {
-    Serial.print("alloc fail/n");
+    audio_block_t* block        = receiveWritable();
+  
+    if( block != nullptr )
+    {
+      const int play_head       = calculate_play_head();
+      write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
+    
+      read_from_buffer( block->data, AUDIO_BLOCK_SAMPLES, play_head );
+    
+      transmit( block, 0 );
+    
+      release( block );
+    }
   }
 }
 
@@ -184,6 +201,13 @@ void GLITCH_DELAY_EFFECT::set_play_head_offset_in_samples_impl( int play_head_of
   m_play_head_offset_in_samples = play_head_offset_in_samples;
 }
 
+void GLITCH_DELAY_EFFECT::set_freeze_impl( bool active )
+{
+  m_freeze_active   = true;
+  m_write_head      = 0;   // use the write head as the play head when frozen
+}
+
+
 void GLITCH_DELAY_EFFECT::set_delay_time( float ratio_of_max_delay )
 {
   ASSERT_MSG( ratio_of_max_delay >= 0.0f && ratio_of_max_delay <= 1.0f, "GLITCH_DELAY_EFFECT::set_delay_time()" );
@@ -200,3 +224,9 @@ void GLITCH_DELAY_EFFECT::set_bit_depth( int sample_size_in_bits )
   m_next_sample_size_in_bits = sample_size_in_bits;
   //set_bit_depth_impl( sample_size_in_bits );
 }
+
+void GLITCH_DELAY_EFFECT::set_freeze( bool active )
+{
+  set_freeze_impl( active );  
+}
+
