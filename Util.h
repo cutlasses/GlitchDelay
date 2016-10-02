@@ -70,4 +70,46 @@ int trunc_to_int( float v )
   return static_cast<int>( trunc(v) );
 }
 
+template < typename TYPE, int CAPACITY >
+class RUNNING_AVERAGE
+{
+  TYPE                    m_values[ CAPACITY ];
+  int                     m_current;
+  int                     m_size;
+
+public:
+
+  RUNNING_AVERAGE() :
+    m_values(),
+    m_current(0),
+    m_size(0)
+  {
+  }
+
+  void add( TYPE value )
+  {
+    m_values[ m_current ] = value;
+    m_current             = ( m_current + 1 ) % CAPACITY;
+    ++m_size;
+    if( m_size > CAPACITY )
+    {
+      m_size              = CAPACITY;
+    }
+  }
+
+  void reset()
+  {
+    m_size                = 0;
+    m_current             = 0;
+  }
+  
+  TYPE average() const
+  {
+    TYPE average = 0;
+    for( int x = 0; x < m_size; ++x )
+    {
+      average += m_values[ x ];
+    }
+  }
+};
 
