@@ -11,9 +11,10 @@ public:
 
   bool                      valid_bpm() const;
   float                     bpm() const;
+  float                     beat_duration_ms() const;
 
   void                      setup();
-  void                      update( float time_ms );
+  bool                      update( float time_ms );  // returns true on every beat (includes tempo taps)
 
 private:
   
@@ -21,5 +22,6 @@ private:
   RUNNING_AVERAGE<float, 4> m_average_times;
 
   float                     m_prev_tap_time_ms;
+  float                     m_next_beat_time_ms;
 };
 

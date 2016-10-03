@@ -19,6 +19,8 @@ bool _assert_fail( const char* assert, const char* msg )
 #define ASSERT_MSG(x, msg)
 #endif
 
+/////////////////////////////////////////////////////
+
 template <typename T>
 T clamp( const T& value, const T& min, const T& max )
 {
@@ -59,16 +61,22 @@ T min_val( const T& v1, const T& v2 )
   }
 }
 
+/////////////////////////////////////////////////////
+
 template <typename T>
 T lerp( const T& v1, const T& v2, float t )
 {
   return v1 + ( (v2 - v1) * t );
 }
 
+/////////////////////////////////////////////////////
+
 int trunc_to_int( float v )
 {
   return static_cast<int>( trunc(v) );
 }
+
+/////////////////////////////////////////////////////
 
 template < typename TYPE, int CAPACITY >
 class RUNNING_AVERAGE
@@ -105,11 +113,13 @@ public:
   
   TYPE average() const
   {
-    TYPE average = 0;
+    TYPE avg = 0;
     for( int x = 0; x < m_size; ++x )
     {
-      average += m_values[ x ];
+      avg += m_values[ x ];
     }
+
+    return avg / m_size;
   }
 
   int size() const

@@ -42,7 +42,13 @@ void GLITCH_DELAY_INTERFACE::update()
   
   m_freeze_button.update( time_in_ms );
   m_mode_button.update( time_in_ms );
-  m_tap_bpm.update( time_in_ms );
+  
+  if( m_tap_bpm.update( time_in_ms ) )
+  {
+#ifdef DEBUG_OUTPUT
+    Serial.print("Beat!\n");
+#endif // DEBUG_OUTPUT    
+  }
 
   if( m_mode_button.down_time_ms() > BIT_DEPTH_BUTTON_HOLD_TIME_MS && m_change_bit_depth_valid )
   {
@@ -57,7 +63,8 @@ void GLITCH_DELAY_INTERFACE::update()
     // once the mode button has been released, we can change the mode again
     m_change_bit_depth_valid = true;
   }
-  
+
+  /*
   if( m_mode_button.single_click() )
   {
     m_current_mode = ( m_current_mode + 1 ) % NUM_MODES;
@@ -78,6 +85,7 @@ void GLITCH_DELAY_INTERFACE::update()
 
     led.update();
   }
+  */
 
   // update bit depth led
   LED& bit_depth_led = m_leds[ NUM_LEDS - 1 ];
