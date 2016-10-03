@@ -111,5 +111,10 @@ public:
       average += m_values[ x ];
     }
   }
+
+  int size() const
+  {
+    return m_size;
+  }
 };
 

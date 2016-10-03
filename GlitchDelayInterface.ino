@@ -8,6 +8,7 @@ GLITCH_DELAY_INTERFACE::GLITCH_DELAY_INTERFACE() :
   m_mix_dial( MIX_DIAL_PIN ),
   m_freeze_button( FREEZE_BUTTON_PIN, FREEZE_BUTTON_IS_TOGGLE ),
   m_mode_button( MODE_BUTTON_PIN, false ),
+  m_tap_bpm( MODE_BUTTON_PIN ),
   m_leds(),
   m_current_mode( 0 ),
   m_change_bit_depth_valid( true ),
@@ -41,6 +42,7 @@ void GLITCH_DELAY_INTERFACE::update()
   
   m_freeze_button.update( time_in_ms );
   m_mode_button.update( time_in_ms );
+  m_tap_bpm.update( time_in_ms );
 
   if( m_mode_button.down_time_ms() > BIT_DEPTH_BUTTON_HOLD_TIME_MS && m_change_bit_depth_valid )
   {

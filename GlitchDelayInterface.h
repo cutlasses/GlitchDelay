@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Interface.h"
+#include "TapBPM.h"
 
 class GLITCH_DELAY_INTERFACE
 {
@@ -27,6 +28,7 @@ class GLITCH_DELAY_INTERFACE
 
   BUTTON            m_freeze_button;
   BUTTON            m_mode_button;
+  TAP_BPM           m_tap_bpm;        // same button as mode
   
   LED               m_leds[NUM_LEDS];
 
