@@ -6,7 +6,8 @@ TAP_BPM::TAP_BPM( int button_pin ) :
   m_tap_button( button_pin, false ),
   m_average_times(),
   m_prev_tap_time_ms(-1.0f),
-  m_next_beat_time_ms(0.0f)
+  m_next_beat_time_ms(0.0f),
+  m_current_beat( NO_BEAT )
 {
   
 }
@@ -39,8 +40,10 @@ void TAP_BPM::setup()
   m_tap_button.setup();
 }
 
-bool TAP_BPM::update( float time_ms )
+void TAP_BPM::update( float time_ms )
 {  
+  m_current_beat = NO_BEAT;
+  
   m_tap_button.update( time_ms );
 
   // button pressed
@@ -71,8 +74,7 @@ bool TAP_BPM::update( float time_ms )
       m_next_beat_time_ms = time_ms + beat_duration_ms();
     }
 
-    // beat!
-    return true;
+    m_current_beat = TAP_BEAT;
   }
   // no button press - wait for next beat
   else
@@ -83,17 +85,14 @@ bool TAP_BPM::update( float time_ms )
       {
         m_next_beat_time_ms = m_next_beat_time_ms + beat_duration_ms();
   
-        // beat!
-        return true;
-      }
-      else
-      {
-        return false;
+        m_current_beat = AUTO_BEAT;
       }
     }
   }
+}
 
-  // no beat
-  return false;
+TAP_BPM::BEAT_TYPE TAP_BPM::beat_type() const
+{
+  return m_current_beat;
 }
 

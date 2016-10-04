@@ -73,7 +73,7 @@ void BUTTON::setup()
   pinMode( m_data_pin, INPUT_PULLUP );
 }
 
-void BUTTON::update( int32_t time_ms )
+void BUTTON::update( uint32_t time_ms )
 { 
   m_bounce.update();
 
@@ -114,19 +114,31 @@ void BUTTON::update( int32_t time_ms )
 
 LED::LED() :
   m_data_pin( 0 ),
-  m_is_active( false )
+  m_is_active( false ),
+  m_flash_active( false ),
+  m_flash_off_time_ms( 0 )
 {
 }
 
 LED::LED( int data_pin ) :
   m_data_pin( data_pin ),
-  m_is_active( false )
+  m_is_active( false ),
+  m_flash_active( false ),
+  m_flash_off_time_ms( 0 )
 {
 }
 
 void LED::set_active( bool active )
 {
   m_is_active = active;
+}
+
+void LED::flash_on( uint32_t time_ms, uint32_t flash_duration_ms )
+{
+  m_flash_active      = true;
+  m_flash_off_time_ms = time_ms + flash_duration_ms;
+
+  m_is_active         = true;
 }
 
 void LED::set_brightness( float brightness )
@@ -139,10 +151,16 @@ void LED::setup()
   pinMode( m_data_pin, OUTPUT );
 }
 
-void LED::update()
-{
-  if( m_is_active )
+void LED::update( uint32_t time_ms )
+{  
+  if( m_is_active && m_flash_active && time_ms > m_flash_off_time_ms )
   {
+    m_is_active     = false;
+    m_flash_active  = false;
+  }
+  
+  if( m_is_active )
+  {   
     analogWrite( m_data_pin, m_brightness );
   }
   else

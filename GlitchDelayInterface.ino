@@ -33,7 +33,7 @@ void GLITCH_DELAY_INTERFACE::setup()
 
 void GLITCH_DELAY_INTERFACE::update()
 {
-  int32_t time_in_ms = millis();
+  uint32_t time_in_ms = millis();
   
   m_length_dial.update() ;
   m_delay_dial.update();
@@ -42,12 +42,16 @@ void GLITCH_DELAY_INTERFACE::update()
   
   m_freeze_button.update( time_in_ms );
   m_mode_button.update( time_in_ms );
+
+  m_tap_bpm.update( time_in_ms );
   
-  if( m_tap_bpm.update( time_in_ms ) )
+  if( m_tap_bpm.beat_type() != TAP_BPM::NO_BEAT )
   {
 #ifdef DEBUG_OUTPUT
     Serial.print("Beat!\n");
-#endif // DEBUG_OUTPUT    
+#endif // DEBUG_OUTPUT
+
+      m_leds[0].flash_on( time_in_ms, 100 );
   }
 
   if( m_mode_button.down_time_ms() > BIT_DEPTH_BUTTON_HOLD_TIME_MS && m_change_bit_depth_valid )
@@ -97,7 +101,7 @@ void GLITCH_DELAY_INTERFACE::update()
   {
     bit_depth_led.set_active( false );
   }
-  bit_depth_led.update();
+  bit_depth_led.update( time_in_ms );
 
 #ifdef DEBUG_OUTPUT
   /*

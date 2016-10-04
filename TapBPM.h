@@ -3,9 +3,21 @@
 #include "Util.h"
 #include "Interface.h"
 
+
 class TAP_BPM
 {
 public:
+
+  //////////////////////////////////////////////////
+
+  enum BEAT_TYPE
+  {
+    TAP_BEAT,
+    AUTO_BEAT,
+    NO_BEAT,
+  };
+
+  //////////////////////////////////////////////////
 
   TAP_BPM( int button_pin );
 
@@ -14,7 +26,9 @@ public:
   float                     beat_duration_ms() const;
 
   void                      setup();
-  bool                      update( float time_ms );  // returns true on every beat (includes tempo taps)
+  void                      update( float time_ms );  // returns true on every beat (includes tempo taps)
+
+  BEAT_TYPE                 beat_type() const;
 
 private:
   
@@ -23,5 +37,7 @@ private:
 
   float                     m_prev_tap_time_ms;
   float                     m_next_beat_time_ms;
+
+  BEAT_TYPE                 m_current_beat;
 };
 

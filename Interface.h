@@ -25,8 +25,8 @@ class BUTTON
   int16_t       m_prev_is_active : 1;
   int16_t       m_is_active : 1;
   int16_t       m_down_time_valid : 1;
-  int32_t       m_down_time_stamp;
-  int32_t       m_down_time_curr;
+  uint32_t       m_down_time_stamp;
+  uint32_t       m_down_time_curr;
 
   Bounce        m_bounce;
 
@@ -40,16 +40,18 @@ public:
   int32_t       down_time_ms() const;
 
   void          setup();
-  void          update( int32_t time_ms );
+  void          update( uint32_t time_ms );
 };
 
 //////////////////////////////////////
 
 class LED
 {
-  int           m_data_pin;
-  int           m_brightness;
-  bool          m_is_active;
+  short         m_data_pin;
+  byte          m_brightness;
+  byte          m_is_active       : 1;
+  byte          m_flash_active    : 1;
+  uint32_t      m_flash_off_time_ms;
 
 public:
 
@@ -57,9 +59,10 @@ public:
   LED( int data_pin );
 
   void          set_active( bool active );
+  void          flash_on( uint32_t time_ms, uint32_t flash_duration );
   void          set_brightness( float brightness );
   
   void          setup();
-  void          update();       
+  void          update( uint32_t time_ms );       
 };
 
