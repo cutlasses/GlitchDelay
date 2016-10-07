@@ -14,7 +14,7 @@ TAP_BPM::TAP_BPM( int button_pin ) :
 
 bool TAP_BPM::valid_bpm() const
 {
-  return m_average_times.size() >= 3; // 4 taps
+  return m_average_times.size() >= 2; // 3 taps
 }
 
 float TAP_BPM::bpm() const

@@ -27,7 +27,7 @@ void GLITCH_DELAY_INTERFACE::setup()
   for( int x = 0; x < NUM_LEDS; ++x )
   {
     m_leds[x].setup();
-    m_leds[x].set_brightness( 0.5f );
+    m_leds[x].set_brightness( 0.25f );
   }
 }
 
@@ -44,6 +44,8 @@ void GLITCH_DELAY_INTERFACE::update()
   m_mode_button.update( time_in_ms );
 
   m_tap_bpm.update( time_in_ms );
+
+  LED& beat_led = m_leds[0];
   
   if( m_tap_bpm.beat_type() != TAP_BPM::NO_BEAT )
   {
@@ -51,7 +53,7 @@ void GLITCH_DELAY_INTERFACE::update()
     Serial.print("Beat!\n");
 #endif // DEBUG_OUTPUT
 
-      m_leds[0].flash_on( time_in_ms, 100 );
+      beat_led.flash_on( time_in_ms, 100 );
   }
 
   if( m_mode_button.down_time_ms() > BIT_DEPTH_BUTTON_HOLD_TIME_MS && m_change_bit_depth_valid )
@@ -68,28 +70,7 @@ void GLITCH_DELAY_INTERFACE::update()
     m_change_bit_depth_valid = true;
   }
 
-  /*
-  if( m_mode_button.single_click() )
-  {
-    m_current_mode = ( m_current_mode + 1 ) % NUM_MODES;
-  }
-
-  // update mode leds
-  for( int x = 0; x < NUM_LEDS - 1; ++x )
-  {
-    LED& led = m_leds[x];
-    if( x == m_current_mode )
-    {
-      led.set_active( true );
-    }
-    else
-    {
-      led.set_active( false );
-    }
-
-    led.update();
-  }
-  */
+  beat_led.update( time_in_ms );
 
   // update bit depth led
   LED& bit_depth_led = m_leds[ NUM_LEDS - 1 ];
