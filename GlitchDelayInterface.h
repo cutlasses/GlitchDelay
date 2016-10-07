@@ -17,8 +17,7 @@ class GLITCH_DELAY_INTERFACE
 
   static const bool     FREEZE_BUTTON_IS_TOGGLE         = true;
   static const int      NUM_LEDS                        = 3;
-  static const int      NUM_MODES                       = 2;
-
+ 
   static const int32_t  BIT_DEPTH_BUTTON_HOLD_TIME_MS   = 2000;
   
   DIAL              m_length_dial;
@@ -30,7 +29,9 @@ class GLITCH_DELAY_INTERFACE
   BUTTON            m_mode_button;
   TAP_BPM           m_tap_bpm;        // same button as mode
   
-  LED               m_leds[NUM_LEDS];
+  LED               m_beat_led;
+  LED               m_glitch_led;
+  LED               m_bit_depth_led;
 
   int               m_current_mode;
   bool              m_change_bit_depth_valid;

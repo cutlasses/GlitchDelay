@@ -9,14 +9,16 @@ GLITCH_DELAY_INTERFACE::GLITCH_DELAY_INTERFACE() :
   m_freeze_button( FREEZE_BUTTON_PIN, FREEZE_BUTTON_IS_TOGGLE ),
   m_mode_button( MODE_BUTTON_PIN, false ),
   m_tap_bpm( MODE_BUTTON_PIN ),
-  m_leds(),
+  m_beat_led(),
+  m_glitch_led(),
+  m_bit_depth_led(),
   m_current_mode( 0 ),
   m_change_bit_depth_valid( true ),
   m_reduced_bit_depth( false )
 {
-  m_leds[0] = LED( LED_1_PIN );
-  m_leds[1] = LED( LED_2_PIN );
-  m_leds[2] = LED( LED_3_PIN ); 
+  m_beat_led        = LED( LED_1_PIN );
+  m_glitch_led      = LED( LED_2_PIN );
+  m_bit_depth_led   = LED( LED_3_PIN ); 
 }
 
 void GLITCH_DELAY_INTERFACE::setup()
@@ -24,11 +26,14 @@ void GLITCH_DELAY_INTERFACE::setup()
   m_freeze_button.setup();
   m_mode_button.setup();
 
-  for( int x = 0; x < NUM_LEDS; ++x )
-  {
-    m_leds[x].setup();
-    m_leds[x].set_brightness( 0.25f );
-  }
+  m_beat_led.setup();
+  m_beat_led.set_brightness( 0.25f );
+
+  m_glitch_led.setup();
+  m_glitch_led.set_brightness( 0.25f );
+
+  m_bit_depth_led.setup();
+  m_bit_depth_led.set_brightness( 0.25f );
 }
 
 void GLITCH_DELAY_INTERFACE::update()
@@ -44,16 +49,14 @@ void GLITCH_DELAY_INTERFACE::update()
   m_mode_button.update( time_in_ms );
 
   m_tap_bpm.update( time_in_ms );
-
-  LED& beat_led = m_leds[0];
-  
+ 
   if( m_tap_bpm.beat_type() != TAP_BPM::NO_BEAT )
   {
 #ifdef DEBUG_OUTPUT
     Serial.print("Beat!\n");
 #endif // DEBUG_OUTPUT
 
-      beat_led.flash_on( time_in_ms, 100 );
+      m_beat_led.flash_on( time_in_ms, 100 );
   }
 
   if( m_mode_button.down_time_ms() > BIT_DEPTH_BUTTON_HOLD_TIME_MS && m_change_bit_depth_valid )
@@ -70,19 +73,18 @@ void GLITCH_DELAY_INTERFACE::update()
     m_change_bit_depth_valid = true;
   }
 
-  beat_led.update( time_in_ms );
+  m_beat_led.update( time_in_ms );
 
   // update bit depth led
-  LED& bit_depth_led = m_leds[ NUM_LEDS - 1 ];
   if( m_reduced_bit_depth )
   {
-    bit_depth_led.set_active( true );
+    m_bit_depth_led.set_active( true );
   }
   else
   {
-    bit_depth_led.set_active( false );
+    m_bit_depth_led.set_active( false );
   }
-  bit_depth_led.update( time_in_ms );
+  m_bit_depth_led.update( time_in_ms );
 
 #ifdef DEBUG_OUTPUT
   /*
