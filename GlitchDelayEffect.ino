@@ -207,8 +207,21 @@ void GLITCH_DELAY_EFFECT::set_freeze_impl( bool active )
   m_write_head      = 0;   // use the write head as the play head when frozen
 }
 
+void GLITCH_DELAY_EFFECT::set_delay_time_in_ms( int16_t time_in_ms )
+{
+  static int num_samples_per_ms = AUDIO_SAMPLE_RATE / 1000;
+  int offset_in_samples   = num_samples_per_ms * time_in_ms;
 
-void GLITCH_DELAY_EFFECT::set_delay_time( float ratio_of_max_delay )
+  if( offset_in_samples > m_buffer_size_in_samples - AUDIO_BLOCK_SAMPLES )
+  {
+    offset_in_samples = m_buffer_size_in_samples - AUDIO_BLOCK_SAMPLES;
+  }
+
+  m_next_play_head_offset_in_samples = offset_in_samples;
+  ASSERT_MSG( m_next_play_head_offset_in_samples >= 0 && m_next_play_head_offset_in_samples <= m_buffer_size_in_samples - AUDIO_BLOCK_SAMPLES, "GLITCH_DELAY_EFFECT::set_delay_time()" );  
+}
+
+void GLITCH_DELAY_EFFECT::set_delay_time_as_ratio( float ratio_of_max_delay )
 {
   ASSERT_MSG( ratio_of_max_delay >= 0.0f && ratio_of_max_delay <= 1.0f, "GLITCH_DELAY_EFFECT::set_delay_time()" );
 

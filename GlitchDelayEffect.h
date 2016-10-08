@@ -42,7 +42,8 @@ public:
 
   virtual void          update();
 
-  void                  set_delay_time( float ratio_of_max_delay );
+  void                  set_delay_time_in_ms( int16_t time_in_ms );
+  void                  set_delay_time_as_ratio( float ratio_of_max_delay );
   void                  set_bit_depth( int sample_size_in_bits );
   void                  set_freeze( bool active );
 };

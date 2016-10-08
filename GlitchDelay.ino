@@ -5,9 +5,10 @@
 #include <SerialFlash.h>
 #include <Bounce.h>     // Arduino compiler can get confused if you don't include include all required headers in this file?!?
 
+#include "CompileSwitches.h"
 #include "GlitchDelayEffect.h"
 #include "GlitchDelayInterface.h"
-#include "CompileSwitches.h"
+#include "TapBPM.h"
 #include "Util.h"
 
 
@@ -73,17 +74,58 @@ void setup()
 
 void loop()
 {
-  glitch_delay_interface.update();
+  static bool glitch_active( false );
+  static uint32_t glitch_end_time_in_ms( 0 );
+  
+  uint32_t time_in_ms = millis();
+  
+  glitch_delay_interface.update( time_in_ms );
 
-  if( glitch_delay_interface.freeze_button().active() != glitch_delay_effect.freeze_active() )
+  if( glitch_active )
   {
-    glitch_delay_effect.set_freeze( glitch_delay_interface.freeze_button().active() );
+    // time to stop glitching?      
+    if( time_in_ms >= glitch_end_time_in_ms )
+    {
+      glitch_delay_effect.set_freeze( false );
+      glitch_active = false;
+      glitch_delay_interface.glitch_led().set_active( false );
+
+      Serial.print("Glitch OFF\n");
+    }
+  }
+  else
+  {
+    if( glitch_delay_interface.tap_bpm().beat_type() == TAP_BPM::AUTO_BEAT )
+    {
+      // update random glitch
+      const float randomness      = glitch_delay_interface.random_dial().value();
+      const float r               = random( 400 ) / 100.0f; // max dial -> glitch 25% of the time
+      if( r < randomness )
+      {
+        glitch_active             = true;
+
+        const int beat_duration   = glitch_delay_interface.tap_bpm().beat_duration_ms();
+        const int glitch_duration = (beat_duration * 4);
+        glitch_end_time_in_ms     = time_in_ms + glitch_duration;
+
+        //const float delay         = beat_duration;
+        //glitch_delay_effect.set_delay_time_in_ms( delay );
+        glitch_delay_effect.set_freeze( true );
+        
+        //glitch_delay_interface.glitch_led().flash_on( time_in_ms, glitch_duration );
+        glitch_delay_interface.glitch_led().set_active( true );
+
+        Serial.print("Glitch ON!\n");
+      }
+    }
   }
 
-  const float delay = clamp( glitch_delay_interface.delay_dial().value(), 0.0f, 1.0f );
-  glitch_delay_effect.set_delay_time( delay );
-  //glitch_delay_effect.set_delay_time( 0.0f );
-
+  if( !glitch_active )
+  {
+    const float delay = clamp( glitch_delay_interface.delay_dial().value(), 0.0f, 1.0f );
+    glitch_delay_effect.set_delay_time_as_ratio( delay );
+  }
+  
   const float wet_dry = clamp( glitch_delay_interface.mix_dial().value(), 0.0f, 1.0f );
   wet_dry_mixer.gain( DRY_CHANNEL, 1.0f - wet_dry );
   wet_dry_mixer.gain( WET_CHANNEL, wet_dry );

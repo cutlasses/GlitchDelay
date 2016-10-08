@@ -2,7 +2,7 @@
 #include "CompileSwitches.h"
   
 GLITCH_DELAY_INTERFACE::GLITCH_DELAY_INTERFACE() :
-  m_length_dial( LENGTH_DIAL_PIN ),
+  m_random_dial( RANDOM_DIAL_PIN ),
   m_delay_dial( DELAY_DIAL_PIN ),
   m_feedback_dial( FEEDBACK_DIAL_PIN ),
   m_mix_dial( MIX_DIAL_PIN ),
@@ -36,11 +36,9 @@ void GLITCH_DELAY_INTERFACE::setup()
   m_bit_depth_led.set_brightness( 0.25f );
 }
 
-void GLITCH_DELAY_INTERFACE::update()
-{
-  uint32_t time_in_ms = millis();
-  
-  m_length_dial.update() ;
+void GLITCH_DELAY_INTERFACE::update( uint32_t time_in_ms )
+{  
+  m_random_dial.update() ;
   m_delay_dial.update();
   m_feedback_dial.update();
   m_mix_dial.update();
@@ -74,6 +72,7 @@ void GLITCH_DELAY_INTERFACE::update()
   }
 
   m_beat_led.update( time_in_ms );
+  m_glitch_led.update( time_in_ms );
 
   // update bit depth led
   if( m_reduced_bit_depth )
@@ -122,9 +121,9 @@ void GLITCH_DELAY_INTERFACE::update()
 #endif // DEBUG_OUTPUT
 }
 
-const DIAL& GLITCH_DELAY_INTERFACE::length_dial() const
+const DIAL& GLITCH_DELAY_INTERFACE::random_dial() const
 {
-  return m_length_dial;
+  return m_random_dial;
 }
 
 const DIAL& GLITCH_DELAY_INTERFACE::delay_dial() const
@@ -145,6 +144,16 @@ const DIAL& GLITCH_DELAY_INTERFACE::mix_dial() const
 const BUTTON& GLITCH_DELAY_INTERFACE::freeze_button() const
 {
   return m_freeze_button;
+}
+
+const TAP_BPM& GLITCH_DELAY_INTERFACE::tap_bpm() const
+{
+  return m_tap_bpm;
+}
+
+LED& GLITCH_DELAY_INTERFACE::glitch_led()
+{
+  return m_glitch_led;
 }
 
 int GLITCH_DELAY_INTERFACE::mode() const
