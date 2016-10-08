@@ -13,6 +13,9 @@ class GLITCH_DELAY_EFFECT : public AudioStream
   int                   m_write_head;     // read head when audio is frozen, write head when not frozen
   int                   m_play_head_offset_in_samples;
 
+  int                   m_freeze_loop_start;
+  int                   m_freeze_loop_end;
+
   int                   m_sample_size_in_bits;
   int                   m_buffer_size_in_samples;
   bool                  m_freeze_active;
@@ -28,11 +31,11 @@ class GLITCH_DELAY_EFFECT : public AudioStream
   int                   calculate_play_head() const;
   
   void                  write_to_buffer( const int16_t* source, int size );
-  int                   read_from_buffer( int16_t* dest, int size, int play_head );
+  int                   read_from_buffer( int16_t* dest, int size, int play_head, int buffer_start, int buffer_end );
  
   void                  set_bit_depth_impl( int sample_size_in_bits );
   void                  set_play_head_offset_in_samples_impl( int play_head_offset_in_samples );
-  void                  set_freeze_impl( bool active );
+  void                  set_freeze_impl( bool active, int loop_size_in_samples );
   
 public:
 
@@ -42,10 +45,10 @@ public:
 
   virtual void          update();
 
-  void                  set_delay_time_in_ms( int16_t time_in_ms );
+  void                  set_delay_time_in_ms( int time_in_ms );
   void                  set_delay_time_as_ratio( float ratio_of_max_delay );
   void                  set_bit_depth( int sample_size_in_bits );
-  void                  set_freeze( bool active );
+  void                  set_freeze( bool active, int loop_size_in_ms = -1 );
 };
 
 

@@ -81,6 +81,8 @@ void loop()
   
   glitch_delay_interface.update( time_in_ms );
 
+  const int beat_duration   = glitch_delay_interface.tap_bpm().beat_duration_ms();
+
   if( glitch_active )
   {
     // time to stop glitching?      
@@ -89,38 +91,32 @@ void loop()
       glitch_delay_effect.set_freeze( false );
       glitch_active = false;
       glitch_delay_interface.glitch_led().set_active( false );
-
-      Serial.print("Glitch OFF\n");
     }
+  }
+  else if( glitch_delay_interface.tap_bpm().beat_type() == TAP_BPM::AUTO_BEAT )
+  {
+    // update random glitch
+    const float randomness      = glitch_delay_interface.random_dial().value();
+    const float r               = random( 400 ) / 100.0f; // max dial -> glitch 25% of the time
+    if( r < randomness )
+    {
+      glitch_active             = true;
+
+      const int glitch_duration = (beat_duration * 2);
+      glitch_end_time_in_ms     = time_in_ms + glitch_duration;
+
+      glitch_delay_effect.set_freeze( true, beat_duration / 4 );
+      
+      //glitch_delay_interface.glitch_led().flash_on( time_in_ms, glitch_duration );
+      glitch_delay_interface.glitch_led().set_active( true );
+    }
+  }
+
+  if( glitch_delay_interface.tap_bpm().valid_bpm() )
+  {
+    glitch_delay_effect.set_delay_time_in_ms( glitch_delay_interface.tap_bpm().beat_duration_ms() );    
   }
   else
-  {
-    if( glitch_delay_interface.tap_bpm().beat_type() == TAP_BPM::AUTO_BEAT )
-    {
-      // update random glitch
-      const float randomness      = glitch_delay_interface.random_dial().value();
-      const float r               = random( 400 ) / 100.0f; // max dial -> glitch 25% of the time
-      if( r < randomness )
-      {
-        glitch_active             = true;
-
-        const int beat_duration   = glitch_delay_interface.tap_bpm().beat_duration_ms();
-        const int glitch_duration = (beat_duration * 4);
-        glitch_end_time_in_ms     = time_in_ms + glitch_duration;
-
-        //const float delay         = beat_duration;
-        //glitch_delay_effect.set_delay_time_in_ms( delay );
-        glitch_delay_effect.set_freeze( true );
-        
-        //glitch_delay_interface.glitch_led().flash_on( time_in_ms, glitch_duration );
-        glitch_delay_interface.glitch_led().set_active( true );
-
-        Serial.print("Glitch ON!\n");
-      }
-    }
-  }
-
-  if( !glitch_active )
   {
     const float delay = clamp( glitch_delay_interface.delay_dial().value(), 0.0f, 1.0f );
     glitch_delay_effect.set_delay_time_as_ratio( delay );

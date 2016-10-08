@@ -20,6 +20,12 @@ int delay_buffer_size_in_samples( int sample_size_in_bits )
   return DELAY_BUFFER_SIZE_IN_BYTES / bytes_per_sample;
 }
 
+int convert_time_in_ms_to_samples( int time_in_ms )
+{
+  static int num_samples_per_ms = AUDIO_SAMPLE_RATE / 1000;
+  return num_samples_per_ms * time_in_ms; 
+}
+
 /////////////////////////////////////////////////////////////////////
 
 GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
@@ -28,6 +34,8 @@ GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
   m_input_queue_array(),
   m_write_head(0),
   m_play_head_offset_in_samples(1),
+  m_freeze_loop_start(0),
+  m_freeze_loop_end(0),
   m_sample_size_in_bits(16),
   m_buffer_size_in_samples( delay_buffer_size_in_samples( 16 ) ),
   m_freeze_active(false),
@@ -118,7 +126,7 @@ void GLITCH_DELAY_EFFECT::write_to_buffer( const int16_t* source, int size )
   }
 }
 
-int GLITCH_DELAY_EFFECT::read_from_buffer( int16_t* dest, int size, int play_head )
+int GLITCH_DELAY_EFFECT::read_from_buffer( int16_t* dest, int size, int play_head, int buffer_start, int buffer_end )
 {
   ASSERT_MSG( play_head >= 0 && play_head < m_buffer_size_in_samples, "GLITCH_DELAY_EFFECT::read_from_buffer()" );
  
@@ -126,9 +134,9 @@ int GLITCH_DELAY_EFFECT::read_from_buffer( int16_t* dest, int size, int play_hea
   {
     dest[x]                   = read_sample( play_head );
     
-    if( ++play_head >= m_buffer_size_in_samples )
+    if( ++play_head > buffer_end )
     {
-      play_head               = 0;
+      play_head               = buffer_start;
     } 
   }
 
@@ -152,7 +160,7 @@ void GLITCH_DELAY_EFFECT::update()
   {
     audio_block_t* block        = allocate();
 
-    m_write_head                = read_from_buffer( block->data, AUDIO_BLOCK_SAMPLES, m_write_head );
+    m_write_head                = read_from_buffer( block->data, AUDIO_BLOCK_SAMPLES, m_write_head, m_freeze_loop_start, m_freeze_loop_end );
 
     transmit( block, 0 );
     
@@ -167,7 +175,7 @@ void GLITCH_DELAY_EFFECT::update()
       const int play_head       = calculate_play_head();
       write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
     
-      read_from_buffer( block->data, AUDIO_BLOCK_SAMPLES, play_head );
+      read_from_buffer( block->data, AUDIO_BLOCK_SAMPLES, play_head, 0, m_buffer_size_in_samples - 1 );
     
       transmit( block, 0 );
     
@@ -201,16 +209,23 @@ void GLITCH_DELAY_EFFECT::set_play_head_offset_in_samples_impl( int play_head_of
   m_play_head_offset_in_samples = play_head_offset_in_samples;
 }
 
-void GLITCH_DELAY_EFFECT::set_freeze_impl( bool active )
+void GLITCH_DELAY_EFFECT::set_freeze_impl( bool active, int loop_size_in_ms )
 {
-  m_freeze_active   = active;
-  m_write_head      = 0;   // use the write head as the play head when frozen
+  m_freeze_active           = active;
+
+  if( active )
+  {
+    int loop_size_in_samples  = convert_time_in_ms_to_samples( loop_size_in_ms );
+    m_freeze_loop_start       = m_write_head;
+    m_freeze_loop_end         = ( m_write_head + loop_size_in_samples ) % m_buffer_size_in_samples;
+  
+    m_write_head              = 0;   // use the write head as the play head when frozen
+  }
 }
 
-void GLITCH_DELAY_EFFECT::set_delay_time_in_ms( int16_t time_in_ms )
+void GLITCH_DELAY_EFFECT::set_delay_time_in_ms( int time_in_ms )
 {
-  static int num_samples_per_ms = AUDIO_SAMPLE_RATE / 1000;
-  int offset_in_samples   = num_samples_per_ms * time_in_ms;
+  int offset_in_samples   = convert_time_in_ms_to_samples( time_in_ms );
 
   if( offset_in_samples > m_buffer_size_in_samples - AUDIO_BLOCK_SAMPLES )
   {
@@ -238,8 +253,8 @@ void GLITCH_DELAY_EFFECT::set_bit_depth( int sample_size_in_bits )
   //set_bit_depth_impl( sample_size_in_bits );
 }
 
-void GLITCH_DELAY_EFFECT::set_freeze( bool active )
+void GLITCH_DELAY_EFFECT::set_freeze( bool active, int loop_size_in_ms )
 {
-  set_freeze_impl( active );  
+  set_freeze_impl( active, loop_size_in_ms );  
 }
 
