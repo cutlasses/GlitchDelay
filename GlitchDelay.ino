@@ -102,7 +102,7 @@ void loop()
     {
       glitch_active             = true;
 
-      const int glitch_duration = (beat_duration * 2);
+      const int glitch_duration = (beat_duration);
       glitch_end_time_in_ms     = time_in_ms + glitch_duration;
 
       glitch_delay_effect.set_freeze( true, beat_duration / 4 );
@@ -131,11 +131,11 @@ void loop()
 
   if( glitch_delay_interface.reduced_bit_depth() )
   {
-    audio_glitch_delay_effect.set_bit_depth( 8 );
+    glitch_delay_effect.set_bit_depth( 8 );
   }
   else
   {
-    audio_glitch_delay_effect.set_bit_depth( 16 );
+    glitch_delay_effect.set_bit_depth( 16 );
   }
 
 #ifdef DEBUG_OUTPUT

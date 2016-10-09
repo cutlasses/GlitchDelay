@@ -131,6 +131,12 @@ int GLITCH_DELAY_EFFECT::read_from_buffer( int16_t* dest, int size, int play_hea
   for( int x = 0; x < size; ++x )
   {
     dest[x]                   = read_sample( play_head );
+
+    // deal with end being behind start due to wraparound
+    if( buffer_start > buffer_end )
+    {
+      buffer_end              = m_buffer_size_in_samples - 1;
+    }
     
     if( ++play_head > buffer_end )
     {
