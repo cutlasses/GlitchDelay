@@ -12,9 +12,30 @@ class GLITCH_DELAY_EFFECT;
 
 class PLAY_HEAD
 {
+  const GLITCH_DELAY_EFFECT&  m_delay_buffer;
+  
+  int                         m_current_offset;
+  int                         m_destination_offset;
+  int                         m_fade_window_size_in_samples;
+  int                         m_fade_samples_remaining;
+
+  int                         calculate_play_head( int offset ) const;
+  int16_t                     read_sample_with_cross_fade();
+   
+public:
+
+  PLAY_HEAD( const GLITCH_DELAY_EFFECT& delay_buffer );
+
+  void                        set_play_head( int offset_from_write_head );
+  void                        read_from_play_head( int16_t* dest, int size );  
+};
+
+////////////////////////////////////
 
 class GLITCH_DELAY_EFFECT : public AudioStream
 {
+  friend class PLAY_HEAD; // TODO create DELAY_BUFFER class
+  
   byte                  m_buffer[DELAY_BUFFER_SIZE_IN_BYTES];
   audio_block_t*        m_input_queue_array[1];
   
@@ -30,6 +51,7 @@ class GLITCH_DELAY_EFFECT : public AudioStream
 
   // store 'next' values, otherwise interrupt could be called during calculation of values
   float                 m_next_sample_size_in_bits;
+  int                   m_next_play_head_offset_in_samples;
   
 
   void                  write_sample( int16_t sample, int index );
