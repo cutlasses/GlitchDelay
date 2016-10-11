@@ -8,6 +8,7 @@
 #include "GlitchDelayEffect.h"
 #include "CompileSwitches.h"
 
+
 const float MIN_SPEED( 0.25f );
 const float MAX_SPEED( 4.0f );
 
