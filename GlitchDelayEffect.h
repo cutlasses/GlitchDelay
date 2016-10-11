@@ -19,15 +19,15 @@ class PLAY_HEAD
   int                         m_fade_window_size_in_samples;
   int                         m_fade_samples_remaining;
 
-  int                         calculate_play_head( int offset ) const;
-  int16_t                     read_sample_with_cross_fade();
+  int                         calculate_play_head( int write_head, int offset ) const;
+  int16_t                     read_sample_with_cross_fade( int write_head );
    
 public:
 
   PLAY_HEAD( const GLITCH_DELAY_EFFECT& delay_buffer );
 
   void                        set_play_head( int offset_from_write_head );
-  void                        read_from_play_head( int16_t* dest, int size );  
+  void                        read_from_play_head( int16_t* dest, int size, int write_head );  
 };
 
 ////////////////////////////////////
@@ -40,7 +40,7 @@ class GLITCH_DELAY_EFFECT : public AudioStream
   audio_block_t*        m_input_queue_array[1];
   
   int                   m_write_head;     // read head when audio is frozen, write head when not frozen
-  int                   m_play_head_offset_in_samples;
+  PLAY_HEAD             m_play_head;
 
   int                   m_freeze_loop_start;
   int                   m_freeze_loop_end;
@@ -56,14 +56,10 @@ class GLITCH_DELAY_EFFECT : public AudioStream
 
   void                  write_sample( int16_t sample, int index );
   int16_t               read_sample( int index ) const;
-
-  int                   calculate_play_head() const;
   
   void                  write_to_buffer( const int16_t* source, int size );
-  int                   read_from_buffer( int16_t* dest, int size, int play_head, int buffer_start, int buffer_end );
  
   void                  set_bit_depth_impl( int sample_size_in_bits );
-  void                  set_play_head_offset_in_samples_impl( int play_head_offset_in_samples );
   void                  set_freeze_impl( bool active, int loop_size_in_samples );
   
 public:

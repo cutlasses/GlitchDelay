@@ -198,7 +198,7 @@ void loop()
     
 #ifdef DEBUG_OUTPUT
   const int processor_usage = AudioProcessorUsage();
-  if( processor_usage > 30 )
+  if( processor_usage > 60 )
   {
     Serial.print( "Performance spike: " );
     Serial.print( processor_usage );
