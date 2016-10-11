@@ -4,6 +4,14 @@
 
 #define DELAY_BUFFER_SIZE_IN_BYTES     1024*50      // 50k
 
+////////////////////////////////////
+
+class GLITCH_DELAY_EFFECT;
+
+////////////////////////////////////
+
+class PLAY_HEAD
+{
 
 class GLITCH_DELAY_EFFECT : public AudioStream
 {
@@ -22,7 +30,6 @@ class GLITCH_DELAY_EFFECT : public AudioStream
 
   // store 'next' values, otherwise interrupt could be called during calculation of values
   float                 m_next_sample_size_in_bits;
-  float                 m_next_play_head_offset_in_samples;
   
 
   void                  write_sample( int16_t sample, int index );

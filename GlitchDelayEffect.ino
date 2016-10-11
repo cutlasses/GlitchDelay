@@ -29,6 +29,64 @@ int convert_time_in_ms_to_samples( int time_in_ms )
 
 /////////////////////////////////////////////////////////////////////
 
+PLAY_HEAD::PLAY_HEAD( const GLITCH_DELAY_EFFECT& delay_buffer ) :
+  m_delay_buffer( delay_buffer ),
+  m_current_offset( 0 ),
+  m_destination_offset( 0 ),
+  m_fade_window_size_in_samples( 0 ),
+  m_fade_samples_remaining( 0 )
+{
+  
+}
+
+int PLAY_HEAD::calculate_play_head( int offset ) const
+{
+  ASSERT_MSG( offset >= 0 && offset < m_buffer_size_in_samples - 1, "PLAY_HEAD::calculate_play_head()" );
+  
+  int play_head = m_delay_buffer.m_write_head - offset;
+  
+  if( play_head < 0 )
+  {
+    play_head = m_delay_buffer.m_buffer_size_in_samples + play_head;
+  }
+
+  ASSERT_MSG( play_head >= 0 && play_head < m_buffer_size_in_samples, "PLAY_HEAD::calculate_play_head()" );
+  return play_head; 
+}
+
+int16_t PLAY_HEAD::read_sample_with_cross_fade()
+{
+  if( m_fade_window_size_in_samples == 0 )
+  {
+    int play_head = calculate_play_head( m_current_offset );
+    return m_delay_buffer.read_sample( play_head );
+  }
+  else
+  {
+    return 0;
+  }
+}
+
+void PLAY_HEAD::set_play_head( int offset_from_write_head )
+{
+  // NOTE : need to deal with setting playhead whilst still interpolating
+  m_destination_offset          = offset_from_write_head;
+
+  static int fade_rate          = AUDIO_SAMPLE_RATE * 4;
+  int distance                  = abs( m_destination_offset - m_current_offset );
+  m_fade_window_size_in_samples = distance / fade_rate;
+}
+
+void PLAY_HEAD::read_from_play_head( int16_t* dest, int size )
+{
+  for( int x = 0; x < size; ++x )
+  {
+    dest[x] = read_sample_with_cross_fade();
+  }
+}
+
+/////////////////////////////////////////////////////////////////////
+
 GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
   AudioStream( 1, m_input_queue_array ),
   m_buffer(),
