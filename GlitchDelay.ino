@@ -93,8 +93,6 @@ void setup()
 
   delay_mixer.gain( 0, 0.5f );
   delay_mixer.gain( 1, 0.25f );
-
-  delay(1000);
   
 #ifdef DEBUG_OUTPUT
   Serial.print("Setup finished!\n");
@@ -133,7 +131,7 @@ void loop()
   {
     // update random glitch
     const float randomness      = glitch_delay_interface.random_dial().value();
-    const float r               = random( 400 ) / 100.0f; // max dial -> glitch 25% of the time
+    const float r               = random( 100 ) / 100.0f; // max dial -> glitch 100% of the time
     if( r < randomness )
     {
       glitch_active             = true;
@@ -142,6 +140,7 @@ void loop()
       glitch_end_time_in_ms     = time_in_ms + glitch_duration;
 
       glitch_delay_effect.set_freeze( true, beat_duration / 4 );
+      //glitch_delay_effect.set_freeze( true, 30 );
       
       //glitch_delay_interface.glitch_led().flash_on( time_in_ms, glitch_duration );
       glitch_delay_interface.glitch_led().set_active( true );
