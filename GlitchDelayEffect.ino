@@ -27,6 +27,35 @@ int convert_time_in_ms_to_samples( int time_in_ms )
   return num_samples_per_ms * time_in_ms; 
 }
 
+int cross_fade_samples( int x, int y, float t )
+{
+  /*
+  t = (t * 2.0f) - 1.0f;
+
+  float fx = x;
+  float fy = y;
+
+  return sqrt( 0.5f * (fx + t) ) + sqrt( 0.5f * (fy -t ) );
+  */
+  /*
+  float a = t * M_PI * 0.5f;
+  float ax = cos(a);
+  float ay = sin(a);
+
+  Serial.print("cf a:");
+  Serial.print(a);
+  Serial.print(" ax:");
+  Serial.print(ax);
+  Serial.print(" ay:");
+  Serial.print(ay);
+  Serial.print("\n");
+
+  return (ax * x) + (ay * y);
+  */
+
+  round( lerp( x, y, t ) );
+}
+
 /////////////////////////////////////////////////////////////////////
 
 PLAY_HEAD::PLAY_HEAD( const GLITCH_DELAY_EFFECT& delay_buffer ) :
@@ -56,9 +85,12 @@ int PLAY_HEAD::calculate_play_head( int write_head, int offset ) const
 
 int16_t PLAY_HEAD::read_sample_with_cross_fade( int write_head )
 {
+  ASSERT_MSG( m_fade_samples_remaining >= 0, "PLAY_HEAD::read_sample_with_cross_fade()" );
+
   if( m_fade_samples_remaining == 0 )
   {
-    int play_head = calculate_play_head( write_head, m_current_offset );
+    m_current_offset            = m_destination_offset;
+    int play_head               = calculate_play_head( write_head, m_current_offset );
     return m_delay_buffer.read_sample( play_head );
   }
   else
@@ -69,23 +101,60 @@ int16_t PLAY_HEAD::read_sample_with_cross_fade( int write_head )
     int dest_play_head          = calculate_play_head( write_head, m_destination_offset );
     int16_t destination_sample  = m_delay_buffer.read_sample( dest_play_head );
 
-    const float t               = 0.0f;
-    return lerp( current_sample, destination_sample, t );
+    const float t               = static_cast<float>(m_fade_samples_remaining) / m_fade_window_size_in_samples; // t=0 at destination, t=1 at current
+    --m_fade_samples_remaining;
+
+/*
+    Serial.print("PLAY_HEAD::read_sample_with_cross_fade() write_head:");
+    Serial.print(write_head);
+    Serial.print(" current_offset:");
+    Serial.print(m_current_offset);
+    Serial.print(" dest_offset:");
+    Serial.print(m_destination_offset);
+
+    Serial.print(" current_play_head:");
+    Serial.print(current_play_head);
+    Serial.print(" dest_play_head:");
+    Serial.print(dest_play_head);
+
+    Serial.print(" t:");
+    Serial.print(t);
+
+    Serial.print(" samps:");
+    Serial.print(m_fade_samples_remaining);
+    Serial.print("\n");
+ */
+    
+    //return lerp( destination_sample, current_sample, t );
+    return cross_fade_samples( destination_sample, current_sample, t );
   }
 }
 
 void PLAY_HEAD::set_play_head( int offset_from_write_head )
 {
-  if( offset_from_write_head != m_current_offset )
+  if( offset_from_write_head != m_destination_offset )
   {
-    // NOTE : need to deal with setting playhead whilst still interpolating
+    if( m_current_offset != m_destination_offset )
+    {
+      // set current based on how far the transition got
+      const float t               = static_cast<float>(m_fade_samples_remaining) / m_fade_window_size_in_samples; // t=0 at destination, t=1 at current
+      m_current_offset            = lerp<int>( m_destination_offset, m_current_offset, t );
+    }
+    
     m_destination_offset          = offset_from_write_head;
-  
-    static int fade_rate          = AUDIO_SAMPLE_RATE * 4;
-    int distance                  = abs( m_destination_offset - m_current_offset );
-    m_fade_window_size_in_samples = distance / fade_rate;
-    m_fade_samples_remaining      = 0;
-    m_current_offset              = offset_from_write_head;
+
+    static int FIXED_FADE_TIME    = (AUDIO_SAMPLE_RATE / 1000.0f ) * 5; // 5ms cross fade
+    //int distance                  = abs( m_destination_offset - m_current_offset );
+    m_fade_window_size_in_samples = FIXED_FADE_TIME; // distance / 4;
+    m_fade_samples_remaining      = m_fade_window_size_in_samples;
+
+/*
+    Serial.print("PLAY_HEAD::set_play_head() distance:");
+    Serial.print(distance);
+    Serial.print(" fade window size:");
+    Serial.print(m_fade_window_size_in_samples);
+    Serial.print("\n");
+*/
   }
 }
 

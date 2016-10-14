@@ -112,10 +112,11 @@ void loop()
     raw_player.play( "GUITAR.RAW" ); 
   }
 #endif
-  
+
+  const bool valid_bpm = glitch_delay_interface.tap_bpm().valid_bpm();
   glitch_delay_interface.update( time_in_ms );
 
-  const int beat_duration   = glitch_delay_interface.tap_bpm().beat_duration_ms();
+  const int beat_duration   = valid_bpm ? glitch_delay_interface.tap_bpm().beat_duration_ms() : 1.0f;
 
   if( glitch_active )
   {
@@ -147,7 +148,7 @@ void loop()
     }
   }
 
-  if( glitch_delay_interface.tap_bpm().valid_bpm() )
+  if( valid_bpm )
   {
     glitch_delay_effect.set_delay_time_in_ms( glitch_delay_interface.tap_bpm().beat_duration_ms() );    
   }
