@@ -53,7 +53,7 @@ int cross_fade_samples( int x, int y, float t )
   return (ax * x) + (ay * y);
   */
 
-  round( lerp( x, y, t ) );
+  return round( lerp( x, y, t ) );
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -132,30 +132,32 @@ int16_t PLAY_HEAD::read_sample_with_cross_fade( int write_head )
 
 void PLAY_HEAD::set_play_head( int offset_from_write_head )
 {
-  if( offset_from_write_head != m_destination_offset )
-  {
-    if( m_current_offset != m_destination_offset )
-    {
-      // set current based on how far the transition got
-      const float t               = static_cast<float>(m_fade_samples_remaining) / m_fade_window_size_in_samples; // t=0 at destination, t=1 at current
-      m_current_offset            = lerp<int>( m_destination_offset, m_current_offset, t );
-    }
-    
-    m_destination_offset          = offset_from_write_head;
+  // already at this offset (or currently fading to it)
+  if( offset_from_write_head == m_destination_offset )
+  {  
+    return;
+  }
 
-    static int FIXED_FADE_TIME    = (AUDIO_SAMPLE_RATE / 1000.0f ) * 5; // 5ms cross fade
-    //int distance                  = abs( m_destination_offset - m_current_offset );
-    m_fade_window_size_in_samples = FIXED_FADE_TIME; // distance / 4;
-    m_fade_samples_remaining      = m_fade_window_size_in_samples;
+  // currently cross fading
+  if( m_current_offset != m_destination_offset )
+  {
+    return;
+  }
+    
+  m_destination_offset          = offset_from_write_head;
+
+  static int FIXED_FADE_TIME    = (AUDIO_SAMPLE_RATE / 1000.0f ) * 5; // 5ms cross fade
+  //int distance                  = abs( m_destination_offset - m_current_offset );
+  m_fade_window_size_in_samples = FIXED_FADE_TIME; // distance / 4;
+  m_fade_samples_remaining      = m_fade_window_size_in_samples;
 
 /*
-    Serial.print("PLAY_HEAD::set_play_head() distance:");
-    Serial.print(distance);
-    Serial.print(" fade window size:");
-    Serial.print(m_fade_window_size_in_samples);
-    Serial.print("\n");
+  Serial.print("PLAY_HEAD::set_play_head() distance:");
+  Serial.print(distance);
+  Serial.print(" fade window size:");
+  Serial.print(m_fade_window_size_in_samples);
+  Serial.print("\n");
 */
-  }
 }
 
 void PLAY_HEAD::read_from_play_head( int16_t* dest, int size, int write_head )

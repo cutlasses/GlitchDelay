@@ -197,7 +197,7 @@ void loop()
      
 #endif // DEBUG_OUTPUT
     
-#ifdef DEBUG_OUTPUT
+#ifdef PERF_CHECK
   const int processor_usage = AudioProcessorUsage();
   if( processor_usage > 60 )
   {
