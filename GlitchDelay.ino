@@ -108,55 +108,35 @@ void setup()
 
 void loop()
 {
-  //static bool glitch_active( false );
-  //static uint32_t glitch_end_time_in_ms( 0 );
-  
   uint32_t time_in_ms = millis();
 
 #ifdef STANDALONE_AUDIO
   if( !raw_player.isPlaying() )
   {
-    //raw_player.play( "GUITAR.RAW" ); 
-    raw_player.play( "DRUMLOOP.RAW" );
+    raw_player.play( "GUITAR.RAW" ); 
+    //raw_player.play( "DRUMLOOP.RAW" );
   }
 #endif
 
   const bool valid_bpm = glitch_delay_interface.tap_bpm().valid_bpm();
   glitch_delay_interface.update( time_in_ms );
 
-  //const int beat_duration   = valid_bpm ? glitch_delay_interface.tap_bpm().beat_duration_ms() : 1.0f;
+  const int beat_duration   = valid_bpm ? glitch_delay_interface.tap_bpm().beat_duration_ms() : 1.0f;
 
-  /*
-  if( glitch_active )
-  {
-    // time to stop glitching?      
-    if( time_in_ms >= glitch_end_time_in_ms )
-    {
-      glitch_delay_effect.set_freeze( false );
-      glitch_active = false;
-      glitch_delay_interface.glitch_led().set_active( false );
-    }
-  }
-  else if( glitch_delay_interface.tap_bpm().beat_type() == TAP_BPM::AUTO_BEAT )
+  if( !glitch_delay_effect.glitch_active() && glitch_delay_interface.tap_bpm().beat_type() == TAP_BPM::AUTO_BEAT )
   {
     // update random glitch
     const float randomness      = glitch_delay_interface.random_dial().value();
     const float r               = random( 100 ) / 100.0f; // max dial -> glitch 100% of the time
     if( r < randomness )
     {
-      glitch_active             = true;
-
       const int glitch_duration = (beat_duration);
-      glitch_end_time_in_ms     = time_in_ms + glitch_duration;
-
-      glitch_delay_effect.set_freeze( true, beat_duration / 4 );
-      //glitch_delay_effect.set_freeze( true, 30 );
+ 
+      glitch_delay_effect.activate_glitch( beat_duration / 4 );
       
-      //glitch_delay_interface.glitch_led().flash_on( time_in_ms, glitch_duration );
-      glitch_delay_interface.glitch_led().set_active( true );
+      glitch_delay_interface.glitch_led().flash_on( time_in_ms, glitch_duration );
     }
   }
-  */
 
   if( valid_bpm )
   {
