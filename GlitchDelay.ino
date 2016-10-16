@@ -53,15 +53,22 @@ AudioConnection          patch_cord_L6( wet_dry_mixer, 0, audio_output, 0 );
 AudioConnection          patch_cord_R1( audio_input, 1, audio_output, 1 );      // right channel passes straight through
 #endif // !STANDALONE_AUDIO
 
+
 AudioControlSGTL5000     sgtl5000_1;
 
 GLITCH_DELAY_INTERFACE   glitch_delay_interface;
+
 
 //////////////////////////////////////
 
 void setup()
 {
+
   Serial.begin(9600);
+
+#ifdef DEBUG_OUTPUT
+  Serial.print("Setup started!\n");
+#endif // DEBUG_OUTPUT
 
   AudioMemory(16);
   
@@ -74,7 +81,7 @@ void setup()
   SPI.setMOSI(SDCARD_MOSI_PIN);
   SPI.setSCK(SDCARD_SCK_PIN);
 
-  #ifdef STANDALONE_AUDIO
+#ifdef STANDALONE_AUDIO
   if (!(SD.begin(SDCARD_CS_PIN))) {
     // stop here, but print a message repetitively
     while (1) {
@@ -82,7 +89,7 @@ void setup()
       delay(500);
     }
   }
-  #endif // STANDALONE_AUDIO
+#endif // STANDALONE_AUDIO
 
   glitch_delay_interface.setup();
 
@@ -101,23 +108,25 @@ void setup()
 
 void loop()
 {
-  static bool glitch_active( false );
-  static uint32_t glitch_end_time_in_ms( 0 );
+  //static bool glitch_active( false );
+  //static uint32_t glitch_end_time_in_ms( 0 );
   
   uint32_t time_in_ms = millis();
 
 #ifdef STANDALONE_AUDIO
   if( !raw_player.isPlaying() )
   {
-    raw_player.play( "GUITAR.RAW" ); 
+    //raw_player.play( "GUITAR.RAW" ); 
+    raw_player.play( "DRUMLOOP.RAW" );
   }
 #endif
 
   const bool valid_bpm = glitch_delay_interface.tap_bpm().valid_bpm();
   glitch_delay_interface.update( time_in_ms );
 
-  const int beat_duration   = valid_bpm ? glitch_delay_interface.tap_bpm().beat_duration_ms() : 1.0f;
+  //const int beat_duration   = valid_bpm ? glitch_delay_interface.tap_bpm().beat_duration_ms() : 1.0f;
 
+  /*
   if( glitch_active )
   {
     // time to stop glitching?      
@@ -147,6 +156,7 @@ void loop()
       glitch_delay_interface.glitch_led().set_active( true );
     }
   }
+  */
 
   if( valid_bpm )
   {
