@@ -37,7 +37,7 @@ AudioConnection          patch_cord_L1( raw_player, 0, delay_mixer, 0 );
 AudioConnection          patch_cord_L2( delay_mixer, 0, glitch_delay_effect, 0 );
 AudioConnection          patch_cord_L3( glitch_delay_effect, 0, delay_mixer, FEEDBACK_CHANNEL );
 AudioConnection          patch_cord_L4( glitch_delay_effect, 0, wet_dry_mixer, WET_CHANNEL );
-AudioConnection          patch_cord_L5( audio_input, 0, wet_dry_mixer, DRY_CHANNEL );
+AudioConnection          patch_cord_L5( raw_player, 0, wet_dry_mixer, DRY_CHANNEL );
 AudioConnection          patch_cord_L6( wet_dry_mixer, 0, audio_output, 0 );
 //AudioConnection          patch_cord_L1( audio_input, 0, audio_output, 0 );    // left channel passes straight through (for testing)
 AudioConnection          patch_cord_R1( audio_input, 1, audio_output, 1 );      // right channel passes straight through
@@ -132,7 +132,7 @@ void loop()
     {
       const int glitch_duration = (beat_duration);
  
-      glitch_delay_effect.activate_glitch( beat_duration / 4 );
+      glitch_delay_effect.activate_glitch( glitch_duration );
       
       glitch_delay_interface.glitch_led().flash_on( time_in_ms, glitch_duration );
     }
@@ -140,7 +140,7 @@ void loop()
 
   if( valid_bpm )
   {
-    glitch_delay_effect.set_delay_time_in_ms( glitch_delay_interface.tap_bpm().beat_duration_ms() );    
+    glitch_delay_effect.set_delay_time_in_ms( glitch_delay_interface.tap_bpm().beat_duration_ms() * 0.25f );    
   }
   else
   {

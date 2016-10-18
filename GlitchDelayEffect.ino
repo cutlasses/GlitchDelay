@@ -63,9 +63,16 @@ PLAY_HEAD::PLAY_HEAD( const DELAY_BUFFER& delay_buffer ) :
   m_current_play_head( 0 ),
   m_destination_play_head( 0 ),
   m_fade_window_size_in_samples( 0 ),
-  m_fade_samples_remaining( 0 )
+  m_fade_samples_remaining( 0 ),
+  m_loop_start( -1 ),
+  m_loop_end( -1 )
 {
   
+}
+
+int PLAY_HEAD::current_position() const
+{
+  return m_current_play_head;
 }
 
 int PLAY_HEAD::destination_position() const
@@ -129,11 +136,11 @@ void PLAY_HEAD::set_play_head( int new_play_head )
   m_fade_samples_remaining      = m_fade_window_size_in_samples;
 
 /*
-  Serial.print("PLAY_HEAD::set_play_head() distance:");
-  Serial.print(distance);
-  Serial.print(" fade window size:");
+#ifdef DEBUG_OUTPUT
+  Serial.print("PLAY_HEAD::set_play_head() fade window size:");
   Serial.print(m_fade_window_size_in_samples);
   Serial.print("\n");
+#endif
 */
 }
 
@@ -141,8 +148,28 @@ void PLAY_HEAD::read_from_play_head( int16_t* dest, int size )
 {
   for( int x = 0; x < size; ++x )
   {
+    if( m_loop_end >= 0 && m_current_play_head > m_loop_end )
+    {
+      ASSERT_MSG( m_loop_start >= 0, "PLAY_HEAD::read_from_play_head() invalid loop start" );
+      set_play_head( m_loop_start );  
+    }
+    
     dest[x] = read_sample_with_cross_fade();
   }
+}
+
+void PLAY_HEAD::enable_loop( int start, int end )
+{
+  m_loop_start  = start;
+  m_loop_end    = end;
+}
+
+void PLAY_HEAD::disable_loop()
+{
+  set_play_head( m_loop_start );
+  
+  m_loop_start            = -1;
+  m_loop_end              = -1;
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -289,9 +316,7 @@ GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
   m_next_sample_size_in_bits(16),
   m_next_play_head_offset_in_samples(1),
   m_pending_glitch_time_in_ms(0),
-  m_glitch_updates(0),
-  m_glitch_window_size_in_samples(0),
-  m_glitch_start_position(0)
+  m_glitch_updates(0)
 {
 
 }
@@ -303,15 +328,16 @@ bool GLITCH_DELAY_EFFECT::glitch_active() const
 
 void GLITCH_DELAY_EFFECT::start_glitch()
 {
-  const float updates_per_ms        = ( AUDIO_SAMPLE_RATE_EXACT / AUDIO_BLOCK_SAMPLES ) / 1000.0f;
+  const float updates_per_ms              = ( AUDIO_SAMPLE_RATE_EXACT / AUDIO_BLOCK_SAMPLES ) / 1000.0f;
 
-  m_glitch_updates                  = round( m_pending_glitch_time_in_ms * updates_per_ms );
+  m_glitch_updates                        = round( m_pending_glitch_time_in_ms * updates_per_ms );
 
-  m_glitch_start_position           = m_play_head.destination_position();
+  const int loop_size                     = AUDIO_SAMPLE_RATE * 0.02f; // 20 ms
+  const int loop_start                    = m_play_head.current_position();
+  
+  m_play_head.enable_loop( loop_start, loop_start + loop_size );
 
-  m_glitch_window_size_in_samples   = AUDIO_SAMPLE_RATE * 0.02f; // 20 ms
-
-  m_pending_glitch_time_in_ms       = 0;
+  m_pending_glitch_time_in_ms             = 0;
 
 #ifdef DEBUG_OUTPUT
   Serial.print("GLITCH_DELAY_EFFECT::start_glitch() num_updates ");
@@ -322,19 +348,17 @@ void GLITCH_DELAY_EFFECT::start_glitch()
 
 void GLITCH_DELAY_EFFECT::update_glitch()
 {
+  --m_glitch_updates;
+
+  if( m_glitch_updates == 0 )
+  {
+    m_play_head.disable_loop();
+
 #ifdef DEBUG_OUTPUT
-  Serial.print("GLITCH_DELAY_EFFECT::update_glitch()\n");
+  Serial.print("GLITCH_DELAY_EFFECT::update_glitch() END\n");
 #endif
 
-  if( m_glitch_updates % m_glitch_window_size_in_samples == 0 )
-  {
-#ifdef DEBUG_OUTPUT
-  Serial.print("reset head\n");
-#endif
-    // reset the playhead
-    m_play_head.set_play_head( m_glitch_start_position );
   }
-  --m_glitch_updates;
 }
 
 void GLITCH_DELAY_EFFECT::update()

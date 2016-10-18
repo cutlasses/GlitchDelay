@@ -19,16 +19,23 @@ class PLAY_HEAD
   int                         m_fade_window_size_in_samples;
   int                         m_fade_samples_remaining;
 
+  int                         m_loop_start;
+  int                         m_loop_end;
+
   int16_t                     read_sample_with_cross_fade();
    
 public:
 
   PLAY_HEAD( const DELAY_BUFFER& delay_buffer );
 
+  int                         current_position() const;
   int                         destination_position() const;
 
   void                        set_play_head( int offset_from_write_head );
   void                        read_from_play_head( int16_t* dest, int size );  
+
+  void                        enable_loop( int start, int end );
+  void                        disable_loop();
 };
 
 ////////////////////////////////////
@@ -76,8 +83,6 @@ class GLITCH_DELAY_EFFECT : public AudioStream
   int                   m_pending_glitch_time_in_ms;
 
   int                   m_glitch_updates;
-  int                   m_glitch_window_size_in_samples;
-  int                   m_glitch_start_position;
 
   void                  start_glitch();
   void                  update_glitch();
