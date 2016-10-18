@@ -12,7 +12,7 @@
 const float MIN_SPEED( 0.25f );
 const float MAX_SPEED( 4.0f );
 
-const int FIXED_FADE_TIME_SAMPLES( (AUDIO_SAMPLE_RATE / 1000.0f ) * 15 ); // 5ms cross fade
+const int FIXED_FADE_TIME_SAMPLES( (AUDIO_SAMPLE_RATE / 1000.0f ) * 5 ); // 5ms cross fade
 
 
 /////////////////////////////////////////////////////////////////////
