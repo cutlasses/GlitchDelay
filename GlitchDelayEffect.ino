@@ -12,6 +12,8 @@
 const float MIN_SPEED( 0.25f );
 const float MAX_SPEED( 4.0f );
 
+const int FIXED_FADE_TIME_SAMPLES( (AUDIO_SAMPLE_RATE / 1000.0f ) * 15 ); // 5ms cross fade
+
 
 /////////////////////////////////////////////////////////////////////
 
@@ -62,7 +64,6 @@ PLAY_HEAD::PLAY_HEAD( const DELAY_BUFFER& delay_buffer ) :
   m_delay_buffer( delay_buffer ),
   m_current_play_head( 0 ),
   m_destination_play_head( 0 ),
-  m_fade_window_size_in_samples( 0 ),
   m_fade_samples_remaining( 0 ),
   m_loop_start( -1 ),
   m_loop_end( -1 )
@@ -102,7 +103,7 @@ int16_t PLAY_HEAD::read_sample_with_cross_fade()
 
      int16_t destination_sample  = m_delay_buffer.read_sample( m_destination_play_head );
 
-    const float t               = static_cast<float>(m_fade_samples_remaining) / m_fade_window_size_in_samples; // t=0 at destination, t=1 at current
+    const float t               = static_cast<float>(m_fade_samples_remaining) / FIXED_FADE_TIME_SAMPLES; // t=0 at destination, t=1 at current
     --m_fade_samples_remaining;
 
     sample                      = cross_fade_samples( destination_sample, current_sample, t );
@@ -130,10 +131,7 @@ void PLAY_HEAD::set_play_head( int new_play_head )
     
   m_destination_play_head       = new_play_head;
 
-  static int FIXED_FADE_TIME    = (AUDIO_SAMPLE_RATE / 1000.0f ) * 5; // 5ms cross fade
-
-  m_fade_window_size_in_samples = FIXED_FADE_TIME;
-  m_fade_samples_remaining      = m_fade_window_size_in_samples;
+  m_fade_samples_remaining      = FIXED_FADE_TIME_SAMPLES;
 
 /*
 #ifdef DEBUG_OUTPUT
@@ -165,9 +163,7 @@ void PLAY_HEAD::enable_loop( int start, int end )
 }
 
 void PLAY_HEAD::disable_loop()
-{
-  set_play_head( m_loop_start );
-  
+{  
   m_loop_start            = -1;
   m_loop_end              = -1;
 }
@@ -178,7 +174,8 @@ DELAY_BUFFER::DELAY_BUFFER() :
   m_buffer(),
   m_buffer_size_in_samples(0),
   m_sample_size_in_bits(0),
-  m_write_head(0)
+  m_write_head(0),
+  m_fade_samples_remaining(0)
 {
   set_bit_depth( 16 );
 }
@@ -283,11 +280,28 @@ void DELAY_BUFFER::write_to_buffer( const int16_t* source, int size )
   
   for( int x = 0; x < size; ++x )
   {
-    write_sample( source[x], m_write_head );
+    // fading in the write head
+    if( m_fade_samples_remaining > 0 )
+    {
+       int16_t old_sample       = read_sample( m_write_head );
+       int16_t new_sample       = source[x];
 
+       const float t            = static_cast<float>(m_fade_samples_remaining) / FIXED_FADE_TIME_SAMPLES; // t=1 at old t=0 at new
+      --m_fade_samples_remaining;
+  
+      int16_t cf_sample         = cross_fade_samples( new_sample, old_sample, t );     
+
+       write_sample( cf_sample, m_write_head );
+    }
+    else
+    {
+      write_sample( source[x], m_write_head );
+    }
+
+    // increment write head
     if( ++m_write_head >= m_buffer_size_in_samples )
     {
-      m_write_head            = 0;
+       m_write_head            = 0;
     }
   }
 }
@@ -304,6 +318,11 @@ void DELAY_BUFFER::set_bit_depth( int sample_size_in_bits )
       
     memset( m_buffer, 0, sizeof(m_buffer) );
   }
+}
+
+void DELAY_BUFFER::fade_in_write()
+{
+  m_fade_samples_remaining = FIXED_FADE_TIME_SAMPLES;
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -353,6 +372,9 @@ void GLITCH_DELAY_EFFECT::update_glitch()
   if( m_glitch_updates == 0 )
   {
     m_play_head.disable_loop();
+
+    // as we stopped writing whilst glitching, we need to fade the new audio on-top of the old written audio
+    m_delay_buffer.fade_in_write();
 
 #ifdef DEBUG_OUTPUT
   Serial.print("GLITCH_DELAY_EFFECT::update_glitch() END\n");

@@ -50,6 +50,8 @@ class DELAY_BUFFER
 
   int                         m_write_head;
 
+  int                         m_fade_samples_remaining;
+
 public:
 
   DELAY_BUFFER();
@@ -66,6 +68,8 @@ public:
   void                        write_to_buffer( const int16_t* source, int size );
 
   void                        set_bit_depth( int sample_size_in_bits );
+
+  void                        fade_in_write();
 };
 
 ////////////////////////////////////
