@@ -31,6 +31,8 @@ public:
   int                         current_position() const;
   int                         destination_position() const;
 
+  bool                        position_inside_crossfade( int position ) const;
+
   void                        set_play_head( int offset_from_write_head );
   void                        read_from_play_head( int16_t* dest, int size );  
 
@@ -59,6 +61,7 @@ public:
   int                         position_offset_from_head( int offset ) const;
   int                         delay_offset_from_ratio( float ratio ) const;
   int                         delay_offset_from_time( int time_in_ms ) const;
+  int                         write_head() const;
 
   void                        write_sample( int16_t sample, int index );
   int16_t                     read_sample( int index ) const;

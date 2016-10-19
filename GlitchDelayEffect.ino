@@ -81,6 +81,32 @@ int PLAY_HEAD::destination_position() const
   return m_destination_play_head;
 }
 
+ bool PLAY_HEAD::position_inside_crossfade( int position ) const
+ {
+  if( m_current_play_head == m_destination_play_head )
+  {
+    return false;
+  }
+  
+  if( m_destination_play_head < m_current_play_head )
+  {
+    // current and destination are wrapped around
+    if( position <= m_current_play_head && position >= m_destination_play_head )
+    {
+      return true;
+    }
+  }
+  else
+  {
+    if( position >= m_current_play_head && position <= m_destination_play_head )
+    {
+      return true;
+    }
+  }
+
+  return false;
+ }
+
 int16_t PLAY_HEAD::read_sample_with_cross_fade()
 {
   ASSERT_MSG( m_fade_samples_remaining >= 0, "PLAY_HEAD::read_sample_with_cross_fade()" );
@@ -215,6 +241,11 @@ int DELAY_BUFFER::delay_offset_from_time( int time_in_ms ) const
   return offset; 
 }
 
+int DELAY_BUFFER::write_head() const
+{
+  return m_write_head;
+}
+
 void DELAY_BUFFER::write_sample( int16_t sample, int index )
 {
   ASSERT_MSG( index >= 0 && index < m_buffer_size_in_samples, "DELAY_BUFFER::write_sample() writing outside buffer" );
@@ -279,7 +310,7 @@ void DELAY_BUFFER::write_to_buffer( const int16_t* source, int size )
   ASSERT_MSG( m_write_head >= 0 && m_write_head < m_buffer_size_in_samples, "GLITCH_DELAY_EFFECT::write_to_buffer()" );
   
   for( int x = 0; x < size; ++x )
-  {
+  {    
     // fading in the write head
     if( m_fade_samples_remaining > 0 )
     {
@@ -299,10 +330,7 @@ void DELAY_BUFFER::write_to_buffer( const int16_t* source, int size )
     }
 
     // increment write head
-    if( ++m_write_head >= m_buffer_size_in_samples )
-    {
-       m_write_head            = 0;
-    }
+    increment_head( m_write_head );
   }
 }
 
@@ -385,6 +413,8 @@ void GLITCH_DELAY_EFFECT::update_glitch()
 
 void GLITCH_DELAY_EFFECT::update()
 {      
+  ASSERT_MSG( !m_play_head.position_inside_crossfade( m_delay_buffer.write_head() ), "DELAY_BUFFER::write_to_buffer()" );
+  
   m_delay_buffer.set_bit_depth( m_next_sample_size_in_bits);
 
   // starting glitch
