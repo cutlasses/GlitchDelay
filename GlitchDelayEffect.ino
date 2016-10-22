@@ -12,7 +12,7 @@
 const float MIN_SPEED( 0.25f );
 const float MAX_SPEED( 4.0f );
 
-const float LOOP_SIZE_IN_S( 0.3f );
+const float LOOP_SIZE_IN_S( 0.2f );
 const int FIXED_FADE_TIME_SAMPLES( (AUDIO_SAMPLE_RATE / 1000.0f ) * 50 ); // 10ms cross fade
 
 
@@ -34,14 +34,14 @@ int fade_out_in( int x, int y, float t )
   // fade down then back up
   if( t < 0.5f )
   {
-    // t 1 -> 0
+    // t = 0.0 -> 1, t = 0.5 -> 0
     t = 1.0f - ( t * 2.0f );
 
     return round( x * t );
   }
   else
   {
-    // t 0 -> 1
+    // t = 0.5 -> 0, t = 1 -> 1
     t = ( t * 2.0f ) - 1.0f;
 
     return round( y * t );
@@ -75,9 +75,9 @@ int cross_fade_samples( int x, int y, float t )
   */
   //return 0;
 
-  return fade_out_in( x, y, t );
+  //return fade_out_in( x, y, t );
 
-  // return round( lerp<float>( x, y, t ) );
+  return round( lerp<float>( x, y, t ) );
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -152,17 +152,8 @@ int16_t PLAY_HEAD::read_sample_with_cross_fade()
 
   int16_t sample(0);
 
-  // not cross-fading
-  if( m_fade_samples_remaining == 0 )
-  {
-    m_current_play_head         = m_destination_play_head;
-    sample                      = m_delay_buffer.read_sample( m_current_play_head );
-
-    m_delay_buffer.increment_head( m_current_play_head );
-    m_destination_play_head     = m_current_play_head;
-  }
   // cross-fading
-  else
+  if( m_fade_samples_remaining > 0 )
   {
     int16_t current_sample      = m_delay_buffer.read_sample( m_current_play_head );
 
@@ -175,6 +166,15 @@ int16_t PLAY_HEAD::read_sample_with_cross_fade()
 
     m_delay_buffer.increment_head( m_current_play_head );
     m_delay_buffer.increment_head( m_destination_play_head );
+  }
+  // not cross-fading
+  else
+  {
+    m_current_play_head         = m_destination_play_head;
+    sample                      = m_delay_buffer.read_sample( m_current_play_head );
+    
+    m_delay_buffer.increment_head( m_current_play_head );
+    m_destination_play_head     = m_current_play_head;
   }
 
   return sample;
@@ -191,6 +191,14 @@ void PLAY_HEAD::set_play_head( int new_play_head )
   // currently cross fading
   if( m_current_play_head != m_destination_play_head )
   {
+#ifdef DEBUG_OUTPUT
+    static bool once = false;
+    if( !once )
+    {
+      once = true;
+      Serial.print("Can't CF\n");
+    }
+#endif
     return;
   }
     
@@ -209,10 +217,16 @@ void PLAY_HEAD::set_play_head( int new_play_head )
 
 void PLAY_HEAD::read_from_play_head( int16_t* dest, int size )
 {
+#ifdef DEBUG_OUTPUT
+  //Serial.print("read from playhead\n");
+#endif
   for( int x = 0; x < size; ++x )
   {
-    if( m_loop_end >= 0 && !position_inside_section( m_current_play_head, m_loop_start, m_loop_end ) )
+    if( m_loop_end >= 0 && !position_inside_section( m_destination_play_head, m_loop_start, m_loop_end ) )
     {
+#ifdef DEBUG_OUTPUT
+  Serial.print("LOOP\n");
+#endif
       ASSERT_MSG( m_loop_start >= 0, "PLAY_HEAD::read_from_play_head() invalid loop start" );
       set_play_head( m_loop_start );  
     }
@@ -376,11 +390,7 @@ void DELAY_BUFFER::write_to_buffer( const int16_t* source, int size )
        const float t            = static_cast<float>(m_fade_samples_remaining) / FIXED_FADE_TIME_SAMPLES; // t=1 at old t=0 at new
       --m_fade_samples_remaining;
   
-      int16_t cf_sample         = cross_fade_samples( new_sample, old_sample, t );     
-
-      Serial.print("wbct:");
-      Serial.print(t);
-      Serial.print("\n");
+      int16_t cf_sample         = cross_fade_samples( new_sample, old_sample, t ); 
 
        write_sample( cf_sample, m_write_head );
     }
@@ -430,29 +440,31 @@ GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
   m_next_sample_size_in_bits(16),
   m_next_play_head_offset_in_samples(1),
   m_pending_glitch_time_in_ms(0),
-  m_glitch_updates(0)
+  m_glitch_updates(-1)
 {
 
 }
 
 bool GLITCH_DELAY_EFFECT::glitch_active() const
 {
-  return m_glitch_updates > 0;
+  return m_glitch_updates >= 0;
 }
 
 void GLITCH_DELAY_EFFECT::start_glitch()
 {
-  ASSERT_MSG( m_glitch_updates == 0, "GLITCH_DELAY_EFFECT::start_glitch() trying to start a glitch during a glitch\n" );
+  ASSERT_MSG( m_glitch_updates == -1, "GLITCH_DELAY_EFFECT::start_glitch() trying to start a glitch during a glitch\n" );
   ASSERT_MSG( !m_play_head.crossfade_active(), "Starting a glitch during a cross fade!" );
   
   const float updates_per_ms              = ( AUDIO_SAMPLE_RATE_EXACT / AUDIO_BLOCK_SAMPLES ) / 1000.0f;
 
   m_glitch_updates                        = round( m_pending_glitch_time_in_ms * updates_per_ms );
 
+  // set the loop so it ends just before the write buffer - otherwise we'll loop over a jump in audio
   const int loop_size                     = round( AUDIO_SAMPLE_RATE * LOOP_SIZE_IN_S );
-  const int loop_start                    = m_play_head.current_position();
+  const int loop_end                      = m_delay_buffer.wrap_to_buffer( m_delay_buffer.write_head() - FIXED_FADE_TIME_SAMPLES - 1 );
+  const int loop_start                    = m_delay_buffer.wrap_to_buffer( loop_end - loop_size );
   
-  m_play_head.enable_loop( loop_start, m_delay_buffer.wrap_to_buffer( loop_start + loop_size ) );
+  m_play_head.enable_loop( loop_start, loop_end );
 
   m_pending_glitch_time_in_ms             = 0;
 
@@ -475,8 +487,11 @@ void GLITCH_DELAY_EFFECT::start_glitch()
 
 void GLITCH_DELAY_EFFECT::update_glitch()
 {
-  --m_glitch_updates;
-
+  if( m_glitch_updates > 0 )
+  {
+    --m_glitch_updates;
+  }
+  
   if( m_glitch_updates == 0 )
   {
     ASSERT_MSG( !m_play_head.crossfade_active(), "Ending a glitch during a cross fade!" );
@@ -501,6 +516,7 @@ void GLITCH_DELAY_EFFECT::update_glitch()
   Serial.print("\n");
 #endif
 
+    m_glitch_updates = -1; // glitch not active
   }
 }
 
@@ -516,10 +532,10 @@ void GLITCH_DELAY_EFFECT::update()
     start_glitch();
   }
 
+  update_glitch();
+
   if( glitch_active() )
-  {
-    update_glitch();
-    
+  {    
     audio_block_t* block        = allocate();
 
     if( block != nullptr )
@@ -538,6 +554,9 @@ void GLITCH_DELAY_EFFECT::update()
     // update the play head position
     if( m_next_play_head_offset_in_samples != m_current_play_head_offset_in_samples )
     {
+#ifdef DEBUG_OUTPUT
+      Serial.print("setting new playhead");
+#endif
       m_current_play_head_offset_in_samples = m_next_play_head_offset_in_samples;
       const int new_playhead                = m_delay_buffer.position_offset_from_head( m_next_play_head_offset_in_samples );
       m_play_head.set_play_head( new_playhead );
@@ -554,6 +573,16 @@ void GLITCH_DELAY_EFFECT::update()
       transmit( block, 0 );
     
       release( block );
+/*
+#ifdef DEBUG_OUTPUT
+      Serial.print("play c:");
+      Serial.print(m_play_head.current_position());
+      Serial.print(" play d:");
+      Serial.print(m_play_head.destination_position());
+      Serial.print(" write:");
+      Serial.print(m_delay_buffer.write_head());
+      Serial.print("\n");
+#endif*/
     }
   }
 }
