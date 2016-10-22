@@ -29,6 +29,7 @@ int convert_time_in_ms_to_samples( int time_in_ms )
   static int num_samples_per_ms = AUDIO_SAMPLE_RATE / 1000;
   return num_samples_per_ms * time_in_ms; 
 }
+
 int fade_out_in( int x, int y, float t )
 {
   // fade down then back up
@@ -50,33 +51,6 @@ int fade_out_in( int x, int y, float t )
 
 int cross_fade_samples( int x, int y, float t )
 {
-  /*
-  t = (t * 2.0f) - 1.0f;
-
-  float fx = x;
-  float fy = y;
-
-  return sqrt( 0.5f * (fx + t) ) + sqrt( 0.5f * (fy -t ) );
-  */
-  /*
-  float a = t * M_PI * 0.5f;
-  float ax = cos(a);
-  float ay = sin(a);
-
-  Serial.print("cf a:");
-  Serial.print(a);
-  Serial.print(" ax:");
-  Serial.print(ax);
-  Serial.print(" ay:");
-  Serial.print(ay);
-  Serial.print("\n");
-
-  return (ax * x) + (ay * y);
-  */
-  //return 0;
-
-  //return fade_out_in( x, y, t );
-
   return round( lerp<float>( x, y, t ) );
 }
 
@@ -88,7 +62,8 @@ PLAY_HEAD::PLAY_HEAD( const DELAY_BUFFER& delay_buffer ) :
   m_destination_play_head( 0 ),
   m_fade_samples_remaining( 0 ),
   m_loop_start( -1 ),
-  m_loop_end( -1 )
+  m_loop_end( -1 ),
+  m_initial_loop_crossfade_complete( false )
 {
   
 }
@@ -146,6 +121,11 @@ bool PLAY_HEAD::crossfade_active() const
   return m_current_play_head != m_destination_play_head;
 }
 
+bool PLAY_HEAD::initial_loop_crossfade_complete() const
+{
+  return m_initial_loop_crossfade_complete;
+}
+
 int16_t PLAY_HEAD::read_sample_with_cross_fade()
 {
   ASSERT_MSG( m_fade_samples_remaining >= 0, "PLAY_HEAD::read_sample_with_cross_fade()" );
@@ -155,14 +135,14 @@ int16_t PLAY_HEAD::read_sample_with_cross_fade()
   // cross-fading
   if( m_fade_samples_remaining > 0 )
   {
-    int16_t current_sample      = m_delay_buffer.read_sample( m_current_play_head );
+    int16_t current_sample            = m_delay_buffer.read_sample( m_current_play_head );
 
-    int16_t destination_sample  = m_delay_buffer.read_sample( m_destination_play_head );
+    int16_t destination_sample        = m_delay_buffer.read_sample( m_destination_play_head );
 
-    const float t               = static_cast<float>(m_fade_samples_remaining) / FIXED_FADE_TIME_SAMPLES; // t=0 at destination, t=1 at current
+    const float t                     = static_cast<float>(m_fade_samples_remaining) / FIXED_FADE_TIME_SAMPLES; // t=0 at destination, t=1 at current
     --m_fade_samples_remaining;
 
-    sample                      = cross_fade_samples( destination_sample, current_sample, t );
+    sample                            = cross_fade_samples( destination_sample, current_sample, t );
 
     m_delay_buffer.increment_head( m_current_play_head );
     m_delay_buffer.increment_head( m_destination_play_head );
@@ -170,11 +150,13 @@ int16_t PLAY_HEAD::read_sample_with_cross_fade()
   // not cross-fading
   else
   {
-    m_current_play_head         = m_destination_play_head;
-    sample                      = m_delay_buffer.read_sample( m_current_play_head );
+    m_initial_loop_crossfade_complete = true;
+    
+    m_current_play_head               = m_destination_play_head;
+    sample                            = m_delay_buffer.read_sample( m_current_play_head );
     
     m_delay_buffer.increment_head( m_current_play_head );
-    m_destination_play_head     = m_current_play_head;
+    m_destination_play_head           = m_current_play_head;
   }
 
   return sample;
@@ -205,29 +187,16 @@ void PLAY_HEAD::set_play_head( int new_play_head )
   m_destination_play_head       = new_play_head;
 
   m_fade_samples_remaining      = FIXED_FADE_TIME_SAMPLES;
-
-/*
-#ifdef DEBUG_OUTPUT
-  Serial.print("PLAY_HEAD::set_play_head() fade window size:");
-  Serial.print(m_fade_window_size_in_samples);
-  Serial.print("\n");
-#endif
-*/
 }
 
 void PLAY_HEAD::read_from_play_head( int16_t* dest, int size )
 {
-#ifdef DEBUG_OUTPUT
-  //Serial.print("read from playhead\n");
-#endif
   for( int x = 0; x < size; ++x )
   {
     if( m_loop_end >= 0 && !position_inside_section( m_destination_play_head, m_loop_start, m_loop_end ) )
     {
-#ifdef DEBUG_OUTPUT
-  Serial.print("LOOP\n");
-#endif
       ASSERT_MSG( m_loop_start >= 0, "PLAY_HEAD::read_from_play_head() invalid loop start" );
+      ASSERT_MSG( m_initial_loop_crossfade_complete, "looping before we've finished the cross-fade into the loop\n" );
       set_play_head( m_loop_start );  
     }
     
@@ -236,23 +205,21 @@ void PLAY_HEAD::read_from_play_head( int16_t* dest, int size )
 }
 
 void PLAY_HEAD::enable_loop( int start, int end )
-{
-#ifdef DEBUG_OUTPUT
-  Serial.print("PLAY_HEAD::enable_loop() start:");
-  Serial.print(start);
-  Serial.print(" end:");
-  Serial.print(end);
-  Serial.print("\n");
-#endif
-  
+{ 
   m_loop_start  = start;
   m_loop_end    = end;
+
+  m_initial_loop_crossfade_complete = false;
+
+  // force a new cross fade
+  m_destination_play_head           = m_loop_start;
+  m_fade_samples_remaining          = FIXED_FADE_TIME_SAMPLES;
 }
 
 void PLAY_HEAD::disable_loop()
 {  
-  m_loop_start              = -1;
-  m_loop_end                = -1;
+  m_loop_start                      = -1;
+  m_loop_end                        = -1;
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -467,22 +434,6 @@ void GLITCH_DELAY_EFFECT::start_glitch()
   m_play_head.enable_loop( loop_start, loop_end );
 
   m_pending_glitch_time_in_ms             = 0;
-
-#ifdef DEBUG_OUTPUT
-  Serial.print("GLITCH_DELAY_EFFECT::start_glitch() num_updates ");
-  Serial.print(m_glitch_updates);
-  Serial.print(" play curr:");
-  Serial.print(m_play_head.current_position());
-  Serial.print(" dest:");
-  Serial.print(m_play_head.destination_position());
-  Serial.print(" write:");
-  Serial.print(m_delay_buffer.write_head());
-  Serial.print(" loop start:");
-  Serial.print(m_play_head.loop_start());
-  Serial.print(" loop end:");
-  Serial.print(m_play_head.loop_end());
-  Serial.print("\n");
-#endif
 }
 
 void GLITCH_DELAY_EFFECT::update_glitch()
@@ -506,16 +457,6 @@ void GLITCH_DELAY_EFFECT::update_glitch()
     m_delay_buffer.set_write_head( new_write_head );
     m_delay_buffer.fade_in_write();
 
-#ifdef DEBUG_OUTPUT
-  Serial.print("GLITCH_DELAY_EFFECT::update_glitch() END play curr:");
-  Serial.print(m_play_head.current_position());
-  Serial.print(" dest:");
-  Serial.print(m_play_head.destination_position());
-  Serial.print(" write:");
-  Serial.print(m_delay_buffer.write_head());
-  Serial.print("\n");
-#endif
-
     m_glitch_updates = -1; // glitch not active
   }
 }
@@ -534,56 +475,38 @@ void GLITCH_DELAY_EFFECT::update()
 
   update_glitch();
 
-  if( glitch_active() )
-  {    
-    audio_block_t* block        = allocate();
+  audio_block_t* block        = receiveWritable();
 
-    if( block != nullptr )
-    {
-      // write head frozen during glitch
-      
-      m_play_head.read_from_play_head( block->data, AUDIO_BLOCK_SAMPLES );
-  
-      transmit( block, 0 );
-      
-      release( block );
-    }
-  }
-  else
+  if( block != nullptr )
   {
-    // update the play head position
-    if( m_next_play_head_offset_in_samples != m_current_play_head_offset_in_samples )
-    {
-#ifdef DEBUG_OUTPUT
-      Serial.print("setting new playhead");
-#endif
-      m_current_play_head_offset_in_samples = m_next_play_head_offset_in_samples;
-      const int new_playhead                = m_delay_buffer.position_offset_from_head( m_next_play_head_offset_in_samples );
-      m_play_head.set_play_head( new_playhead );
+    if( glitch_active() )
+    {  
+        // write head frozen during glitch (after initial cross fade)
+        if( !m_play_head.initial_loop_crossfade_complete() )
+        {
+          m_delay_buffer.write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
+        }
+
+        m_play_head.read_from_play_head( block->data, AUDIO_BLOCK_SAMPLES );
     }
-    
-    audio_block_t* block        = receiveWritable();
-  
-    if( block != nullptr )
+    else
     {
+      // update the play head position
+      if( m_next_play_head_offset_in_samples != m_current_play_head_offset_in_samples )
+      {
+        m_current_play_head_offset_in_samples = m_next_play_head_offset_in_samples;
+        const int new_playhead                = m_delay_buffer.position_offset_from_head( m_next_play_head_offset_in_samples );
+        m_play_head.set_play_head( new_playhead );
+      }
+
       m_delay_buffer.write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
       
       m_play_head.read_from_play_head( block->data, AUDIO_BLOCK_SAMPLES );
-    
-      transmit( block, 0 );
-    
-      release( block );
-/*
-#ifdef DEBUG_OUTPUT
-      Serial.print("play c:");
-      Serial.print(m_play_head.current_position());
-      Serial.print(" play d:");
-      Serial.print(m_play_head.destination_position());
-      Serial.print(" write:");
-      Serial.print(m_delay_buffer.write_head());
-      Serial.print("\n");
-#endif*/
     }
+
+    transmit( block, 0 );
+  
+    release( block );
   }
 }
 

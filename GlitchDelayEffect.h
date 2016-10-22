@@ -22,6 +22,8 @@ class PLAY_HEAD
   int                         m_loop_start;
   int                         m_loop_end;
 
+  bool                        m_initial_loop_crossfade_complete;
+
   int16_t                     read_sample_with_cross_fade();
    
 public:
@@ -37,6 +39,7 @@ public:
   bool                        position_inside_crossfade( int position ) const;
   bool                        position_inside_section( int position, int start, int end ) const;
   bool                        crossfade_active() const;
+  bool                        initial_loop_crossfade_complete() const;
 
   void                        set_play_head( int offset_from_write_head );
   void                        read_from_play_head( int16_t* dest, int size );  
