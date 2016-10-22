@@ -173,14 +173,6 @@ void PLAY_HEAD::set_play_head( int new_play_head )
   // currently cross fading
   if( m_current_play_head != m_destination_play_head )
   {
-#ifdef DEBUG_OUTPUT
-    static bool once = false;
-    if( !once )
-    {
-      once = true;
-      Serial.print("Can't CF\n");
-    }
-#endif
     return;
   }
     
@@ -430,6 +422,9 @@ void GLITCH_DELAY_EFFECT::start_glitch()
   const int loop_size                     = round( AUDIO_SAMPLE_RATE * LOOP_SIZE_IN_S );
   const int loop_end                      = m_delay_buffer.wrap_to_buffer( m_delay_buffer.write_head() - FIXED_FADE_TIME_SAMPLES - 1 );
   const int loop_start                    = m_delay_buffer.wrap_to_buffer( loop_end - loop_size );
+
+  ASSERT_MSG( loop_size + FIXED_FADE_TIME_SAMPLES + 1 < DELAY_BUFFER_SIZE_IN_BYTES, "Loop size too large\n" );
+  ASSERT_MSG( loop_size > FIXED_FADE_TIME_SAMPLES * 2, "Loop size too small\n" );
   
   m_play_head.enable_loop( loop_start, loop_end );
 
