@@ -31,7 +31,12 @@ public:
   int                         current_position() const;
   int                         destination_position() const;
 
+  int                         loop_start() const;
+  int                         loop_end() const;
+
   bool                        position_inside_crossfade( int position ) const;
+  bool                        position_inside_section( int position, int start, int end ) const;
+  bool                        crossfade_active() const;
 
   void                        set_play_head( int offset_from_write_head );
   void                        read_from_play_head( int16_t* dest, int size );  
@@ -62,6 +67,7 @@ public:
   int                         delay_offset_from_ratio( float ratio ) const;
   int                         delay_offset_from_time( int time_in_ms ) const;
   int                         write_head() const;
+  int                         wrap_to_buffer( int position ) const;
 
   void                        write_sample( int16_t sample, int index );
   int16_t                     read_sample( int index ) const;
@@ -70,6 +76,7 @@ public:
   
   void                        write_to_buffer( const int16_t* source, int size );
 
+  void                        set_write_head( int new_write_head );
   void                        set_bit_depth( int sample_size_in_bits );
 
   void                        fade_in_write();
@@ -83,6 +90,8 @@ class GLITCH_DELAY_EFFECT : public AudioStream
   DELAY_BUFFER          m_delay_buffer;
 
   PLAY_HEAD             m_play_head;
+
+  int                   m_current_play_head_offset_in_samples;
 
   // store 'next' values, otherwise interrupt could be called during calculation of values
   int                   m_next_sample_size_in_bits;

@@ -118,6 +118,7 @@ void loop()
   }
 #endif
 
+/*
   const bool valid_bpm = glitch_delay_interface.tap_bpm().valid_bpm();
   glitch_delay_interface.update( time_in_ms );
 
@@ -154,6 +155,7 @@ void loop()
   
   const float feedback = glitch_delay_interface.feedback_dial().value();
   delay_mixer.gain( FEEDBACK_CHANNEL, feedback * MAX_FEEDBACK );
+  delay_mixer.gain( FEEDBACK_CHANNEL, 0.0f );
 
   if( glitch_delay_interface.reduced_bit_depth() )
   {
@@ -163,6 +165,30 @@ void loop()
   {
     glitch_delay_effect.set_bit_depth( 16 );
   }
+ */
+
+  // TEST CASE
+
+  static uint32_t next_update = 5000;
+  glitch_delay_interface.update( time_in_ms );
+
+  if( time_in_ms > next_update )
+  {
+    next_update = time_in_ms + 4000;
+    
+    if( !glitch_delay_effect.glitch_active() )
+    {
+      const int glitch_duration = 2000;
+      
+      glitch_delay_effect.activate_glitch( glitch_duration );
+      
+      glitch_delay_interface.glitch_led().flash_on( time_in_ms, glitch_duration );
+    }
+  }
+
+  delay_mixer.gain( FEEDBACK_CHANNEL, 0.0f );
+  wet_dry_mixer.gain( DRY_CHANNEL, 0.0f );
+  wet_dry_mixer.gain( WET_CHANNEL, 1.0f );
 
 #ifdef DEBUG_OUTPUT
 /*
@@ -189,7 +215,7 @@ void loop()
     
 #ifdef PERF_CHECK
   const int processor_usage = AudioProcessorUsage();
-  if( processor_usage > 60 )
+  if( processor_usage > 85 )
   {
     Serial.print( "Performance spike: " );
     Serial.print( processor_usage );

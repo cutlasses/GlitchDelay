@@ -50,10 +50,6 @@ void GLITCH_DELAY_INTERFACE::update( uint32_t time_in_ms )
  
   if( m_tap_bpm.beat_type() != TAP_BPM::NO_BEAT )
   {
-#ifdef DEBUG_OUTPUT
-    Serial.print("Beat!\n");
-#endif // DEBUG_OUTPUT
-
       m_beat_led.flash_on( time_in_ms, 100 );
   }
 
