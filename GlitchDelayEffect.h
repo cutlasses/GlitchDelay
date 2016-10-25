@@ -38,6 +38,7 @@ public:
 
   bool                        position_inside_crossfade( int position ) const;
   bool                        position_inside_section( int position, int start, int end ) const;
+  bool                        position_inside_next_read( int position, int read_size ) const;
   bool                        crossfade_active() const;
   bool                        initial_loop_crossfade_complete() const;
 
@@ -72,6 +73,7 @@ public:
   int                         delay_offset_from_time( int time_in_ms ) const;
   int                         write_head() const;
   int                         wrap_to_buffer( int position ) const;
+  bool                        write_buffer_fading_in() const;
 
   void                        write_sample( int16_t sample, int index );
   int16_t                     read_sample( int index ) const;
@@ -104,7 +106,8 @@ class GLITCH_DELAY_EFFECT : public AudioStream
 
   int                   m_glitch_updates;
   bool                  m_shift_forwards;
-  
+
+  bool                  glitch_active() const;
   void                  start_glitch();
   void                  update_glitch();
   
@@ -112,7 +115,7 @@ public:
 
   GLITCH_DELAY_EFFECT();
 
-  bool                  glitch_active() const;
+  bool                  can_start_glitch() const;
 
   virtual void          update();
 

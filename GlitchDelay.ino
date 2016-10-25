@@ -118,13 +118,12 @@ void loop()
   }
 #endif
 
-/*
   const bool valid_bpm = glitch_delay_interface.tap_bpm().valid_bpm();
   glitch_delay_interface.update( time_in_ms );
 
   const int beat_duration   = valid_bpm ? glitch_delay_interface.tap_bpm().beat_duration_ms() : 1.0f;
 
-  if( !glitch_delay_effect.glitch_active() && glitch_delay_interface.tap_bpm().beat_type() == TAP_BPM::AUTO_BEAT )
+  if( glitch_delay_effect.can_start_glitch() && glitch_delay_interface.tap_bpm().beat_type() == TAP_BPM::AUTO_BEAT )
   {
     // update random glitch
     const float randomness      = glitch_delay_interface.random_dial().value();
@@ -165,10 +164,10 @@ void loop()
   {
     glitch_delay_effect.set_bit_depth( 16 );
   }
- */
 
   // TEST CASE
 
+/*
   static uint32_t next_update = 5000;
   glitch_delay_interface.update( time_in_ms );
 
@@ -189,6 +188,7 @@ void loop()
   delay_mixer.gain( FEEDBACK_CHANNEL, 0.0f );
   wet_dry_mixer.gain( DRY_CHANNEL, 0.0f );
   wet_dry_mixer.gain( WET_CHANNEL, 1.0f );
+*/
 
 #ifdef DEBUG_OUTPUT
 /*

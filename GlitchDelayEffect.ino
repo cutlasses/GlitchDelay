@@ -63,8 +63,7 @@ PLAY_HEAD::PLAY_HEAD( const DELAY_BUFFER& delay_buffer ) :
   m_destination_play_head( 0 ),
   m_fade_samples_remaining( 0 ),
   m_loop_start( -1 ),
-  m_loop_end( -1 ),
-  m_initial_loop_crossfade_complete( false )
+  m_loop_end( -1 )
 {
   
 }
@@ -89,16 +88,6 @@ int PLAY_HEAD::loop_end() const
   return m_loop_end;
 }
 
-bool PLAY_HEAD::position_inside_crossfade( int position ) const
-{
-  if( m_current_play_head == m_destination_play_head )
-  {
-    return false;
-  }
-  
-  return position_inside_section( position, m_current_play_head, m_destination_play_head );
-}
-
 bool PLAY_HEAD::position_inside_section( int position, int start, int end ) const
 {
   if( end < start )
@@ -117,14 +106,59 @@ bool PLAY_HEAD::position_inside_section( int position, int start, int end ) cons
   return false;
 }
 
-bool PLAY_HEAD::crossfade_active() const
+bool PLAY_HEAD::position_inside_next_read( int position, int read_size ) const
 {
-  return m_current_play_head != m_destination_play_head;
+  // standard delay
+  if( m_loop_end < 0 )
+  {
+    if( m_current_play_head != m_destination_play_head )
+    {
+      const int current_cf_end = m_delay_buffer.wrap_to_buffer( m_current_play_head + m_fade_samples_remaining );
+      if( position_inside_section( position, m_current_play_head, current_cf_end ) )
+      {
+        // inside the cross fade from current to destination
+        return true;
+      }
+
+      const int destination_end = m_delay_buffer.wrap_to_buffer( m_destination_play_head + max_val<int>( read_size, m_fade_samples_remaining ) );
+      if( position_inside_section( position, m_destination_play_head, destination_end ) )
+      {
+        // inside the cross fade from current to destination
+        return true;
+      }   
+    }
+    else
+    {
+      // not cross-fading
+      const int read_end = m_delay_buffer.wrap_to_buffer( m_current_play_head + FIXED_FADE_TIME_SAMPLES );
+      if( position_inside_section( position, m_current_play_head, read_end ) )
+      {
+        return true;
+      }
+    }
+  }
+  // otherwise looping
+  else
+  {
+    const int loop_end_cf_end = m_delay_buffer.wrap_to_buffer( m_loop_end + FIXED_FADE_TIME_SAMPLES );
+    if( position_inside_section( position, m_loop_start, loop_end_cf_end ) )
+    {
+      // inside the cross fade from current to destination
+      return true;
+    }    
+  }
+
+  return false;
 }
 
 bool PLAY_HEAD::initial_loop_crossfade_complete() const
 {
   return m_initial_loop_crossfade_complete;
+}
+
+bool PLAY_HEAD::crossfade_active() const
+{
+  return m_current_play_head != m_destination_play_head;
 }
 
 int16_t PLAY_HEAD::read_sample_with_cross_fade()
@@ -282,6 +316,11 @@ int DELAY_BUFFER::wrap_to_buffer( int position ) const
   return position;
 }
 
+bool DELAY_BUFFER::write_buffer_fading_in() const
+{
+  return m_fade_samples_remaining > 0;  
+}
+
 void DELAY_BUFFER::write_sample( int16_t sample, int index )
 {
   ASSERT_MSG( index >= 0 && index < m_buffer_size_in_samples, "DELAY_BUFFER::write_sample() writing outside buffer" );
@@ -412,6 +451,11 @@ GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
 
 }
 
+bool GLITCH_DELAY_EFFECT::can_start_glitch() const
+{
+  return !glitch_active() && !m_delay_buffer.write_buffer_fading_in();
+}
+
 bool GLITCH_DELAY_EFFECT::glitch_active() const
 {
   return m_glitch_updates >= 0;
@@ -487,7 +531,7 @@ void GLITCH_DELAY_EFFECT::update_glitch()
   }
   
   if( m_glitch_updates == 0 && !m_play_head.crossfade_active() )
-  {
+  {    
     const int new_write_head = m_delay_buffer.wrap_to_buffer( m_play_head.current_position() + m_current_play_head_offset_in_samples );
 
     m_play_head.disable_loop();
@@ -503,9 +547,7 @@ void GLITCH_DELAY_EFFECT::update_glitch()
 }
 
 void GLITCH_DELAY_EFFECT::update()
-{      
-  //ASSERT_MSG( !m_play_head.position_inside_crossfade( m_delay_buffer.write_head() ), "DELAY_BUFFER::write_to_buffer()" );
-  
+{        
   m_delay_buffer.set_bit_depth( m_next_sample_size_in_bits);
 
   // starting glitch
@@ -523,11 +565,12 @@ void GLITCH_DELAY_EFFECT::update()
     if( glitch_active() )
     {  
         // write head frozen during glitch (after initial cross fade)
-        if( !m_play_head.initial_loop_crossfade_complete() )
+        /*if( !m_play_head.initial_loop_crossfade_complete() )
         {
           m_delay_buffer.write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
-        }
+        }*/
 
+        ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "Glitch - reading over write buffer\n" );
         m_play_head.read_from_play_head( block->data, AUDIO_BLOCK_SAMPLES );
     }
     else
@@ -538,10 +581,15 @@ void GLITCH_DELAY_EFFECT::update()
         m_current_play_head_offset_in_samples = m_next_play_head_offset_in_samples;
         const int new_playhead                = m_delay_buffer.position_offset_from_head( m_next_play_head_offset_in_samples );
         m_play_head.set_play_head( new_playhead );
+
+#ifdef DEBUG_OUTPUT
+        Serial.print( "set playhead\n" );
+#endif      
       }
 
       m_delay_buffer.write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
-      
+
+      ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "Non - reading over write buffer\n" );
       m_play_head.read_from_play_head( block->data, AUDIO_BLOCK_SAMPLES );
     }
 
