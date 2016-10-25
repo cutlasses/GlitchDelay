@@ -441,7 +441,7 @@ GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
   m_input_queue_array(),
   m_delay_buffer(),
   m_play_head(m_delay_buffer),
-  m_current_play_head_offset_in_samples(0),
+  m_current_play_head_offset_in_samples(1),
   m_next_sample_size_in_bits(16),
   m_next_play_head_offset_in_samples(1),
   m_pending_glitch_time_in_ms(0),
@@ -583,7 +583,9 @@ void GLITCH_DELAY_EFFECT::update()
         m_play_head.set_play_head( new_playhead );
 
 #ifdef DEBUG_OUTPUT
-        Serial.print( "set playhead\n" );
+        Serial.print( "Set playhead " );
+        Serial.print( new_playhead );
+        Serial.print( "\n" );
 #endif      
       }
 

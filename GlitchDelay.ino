@@ -118,6 +118,7 @@ void loop()
   }
 #endif
 
+  /*
   const bool valid_bpm = glitch_delay_interface.tap_bpm().valid_bpm();
   glitch_delay_interface.update( time_in_ms );
 
@@ -130,7 +131,7 @@ void loop()
     const float r               = random( 100 ) / 100.0f; // max dial -> glitch 100% of the time
     if( r < randomness )
     {
-      const int glitch_duration = (beat_duration);
+      const int glitch_duration = (beat_duration * 4);
  
       glitch_delay_effect.activate_glitch( glitch_duration );
       
@@ -164,10 +165,11 @@ void loop()
   {
     glitch_delay_effect.set_bit_depth( 16 );
   }
+  */
 
   // TEST CASE
 
-/*
+
   static uint32_t next_update = 5000;
   glitch_delay_interface.update( time_in_ms );
 
@@ -175,7 +177,7 @@ void loop()
   {
     next_update = time_in_ms + 5000;
     
-    if( !glitch_delay_effect.glitch_active() )
+    if( glitch_delay_effect.can_start_glitch() )
     {
       const int glitch_duration = 3000;
       
@@ -188,7 +190,7 @@ void loop()
   delay_mixer.gain( FEEDBACK_CHANNEL, 0.0f );
   wet_dry_mixer.gain( DRY_CHANNEL, 0.0f );
   wet_dry_mixer.gain( WET_CHANNEL, 1.0f );
-*/
+
 
 #ifdef DEBUG_OUTPUT
 /*
