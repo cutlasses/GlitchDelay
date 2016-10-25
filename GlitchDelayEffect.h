@@ -36,7 +36,6 @@ public:
   int                         loop_start() const;
   int                         loop_end() const;
 
-  bool                        position_inside_crossfade( int position ) const;
   bool                        position_inside_section( int position, int start, int end ) const;
   bool                        position_inside_next_read( int position, int read_size ) const;
   bool                        crossfade_active() const;
