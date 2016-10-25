@@ -12,8 +12,9 @@
 const float MIN_SPEED( 0.25f );
 const float MAX_SPEED( 4.0f );
 
-const float LOOP_SIZE_IN_S( 0.2f );
-const int FIXED_FADE_TIME_SAMPLES( (AUDIO_SAMPLE_RATE / 1000.0f ) * 50 ); // 10ms cross fade
+const float LOOP_SIZE_IN_S( 0.05f );
+const int FIXED_FADE_TIME_SAMPLES( (AUDIO_SAMPLE_RATE / 1000.0f ) * 10 ); // 10ms cross fade
+const int SHIFT_SPEED( 30 );
 
 
 /////////////////////////////////////////////////////////////////////
@@ -214,6 +215,12 @@ void PLAY_HEAD::disable_loop()
   m_loop_end                        = -1;
 }
 
+void PLAY_HEAD::shift_loop( const DELAY_BUFFER& delay_buffer, int offset )
+{
+  m_loop_start      = delay_buffer.wrap_to_buffer( m_loop_start + offset );
+  m_loop_end        = delay_buffer.wrap_to_buffer( m_loop_end + offset );
+}
+
 /////////////////////////////////////////////////////////////////////
 
 DELAY_BUFFER::DELAY_BUFFER() :
@@ -399,7 +406,8 @@ GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
   m_next_sample_size_in_bits(16),
   m_next_play_head_offset_in_samples(1),
   m_pending_glitch_time_in_ms(0),
-  m_glitch_updates(-1)
+  m_glitch_updates(-1),
+  m_shift_forwards(true)
 {
 
 }
@@ -412,16 +420,22 @@ bool GLITCH_DELAY_EFFECT::glitch_active() const
 void GLITCH_DELAY_EFFECT::start_glitch()
 {
   ASSERT_MSG( m_glitch_updates == -1, "GLITCH_DELAY_EFFECT::start_glitch() trying to start a glitch during a glitch\n" );
-  ASSERT_MSG( !m_play_head.crossfade_active(), "Starting a glitch during a cross fade!" );
+  
+  if( m_play_head.crossfade_active() )
+  {
+    return;
+  }
   
   const float updates_per_ms              = ( AUDIO_SAMPLE_RATE_EXACT / AUDIO_BLOCK_SAMPLES ) / 1000.0f;
 
   m_glitch_updates                        = round( m_pending_glitch_time_in_ms * updates_per_ms );
+  m_shift_forwards                        = true;
 
   // set the loop so it ends just before the write buffer - otherwise we'll loop over a jump in audio
   const int loop_size                     = round( AUDIO_SAMPLE_RATE * LOOP_SIZE_IN_S );
-  const int loop_end                      = m_delay_buffer.wrap_to_buffer( m_delay_buffer.write_head() - FIXED_FADE_TIME_SAMPLES - 1 );
-  const int loop_start                    = m_delay_buffer.wrap_to_buffer( loop_end - loop_size );
+  const int loop_start                    = m_delay_buffer.wrap_to_buffer( m_delay_buffer.write_head() + FIXED_FADE_TIME_SAMPLES + 1 );
+  const int loop_end                      = m_delay_buffer.wrap_to_buffer( loop_start + loop_size );
+
 
   ASSERT_MSG( loop_size + FIXED_FADE_TIME_SAMPLES + 1 < DELAY_BUFFER_SIZE_IN_BYTES, "Loop size too large\n" );
   ASSERT_MSG( loop_size > FIXED_FADE_TIME_SAMPLES * 2, "Loop size too small\n" );
@@ -436,12 +450,44 @@ void GLITCH_DELAY_EFFECT::update_glitch()
   if( m_glitch_updates > 0 )
   {
     --m_glitch_updates;
+
+    if( m_play_head.initial_loop_crossfade_complete() )
+    {
+      if( m_shift_forwards )
+      {
+        const int new_loop_end = m_delay_buffer.wrap_to_buffer( m_play_head.loop_end() + (SHIFT_SPEED + FIXED_FADE_TIME_SAMPLES) );
+  
+        // check for crossing boundary
+        if( new_loop_end == m_delay_buffer.write_head() ||
+            (new_loop_end > m_delay_buffer.write_head()) != (m_play_head.loop_end() > m_delay_buffer.write_head()) )
+        {
+          m_shift_forwards = false;
+        }
+      }
+      else
+      {
+        const int new_loop_start = m_delay_buffer.wrap_to_buffer( m_play_head.loop_start() - (SHIFT_SPEED + FIXED_FADE_TIME_SAMPLES) );
+  
+        if( new_loop_start == m_delay_buffer.write_head() ||
+            (new_loop_start <= m_delay_buffer.write_head()) != (m_play_head.loop_start() <= m_delay_buffer.write_head()) )
+        {
+          m_shift_forwards = true;
+        }      
+      }
+  
+      if( m_shift_forwards )
+      {
+        m_play_head.shift_loop( m_delay_buffer, SHIFT_SPEED );
+      }
+      else
+      {
+        m_play_head.shift_loop( m_delay_buffer, -SHIFT_SPEED );
+      }
+    }
   }
   
-  if( m_glitch_updates == 0 )
+  if( m_glitch_updates == 0 && !m_play_head.crossfade_active() )
   {
-    ASSERT_MSG( !m_play_head.crossfade_active(), "Ending a glitch during a cross fade!" );
-
     const int new_write_head = m_delay_buffer.wrap_to_buffer( m_play_head.current_position() + m_current_play_head_offset_in_samples );
 
     m_play_head.disable_loop();

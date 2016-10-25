@@ -46,6 +46,7 @@ public:
 
   void                        enable_loop( int start, int end );
   void                        disable_loop();
+  void                        shift_loop( const DELAY_BUFFER& delay_buffer, int offset );
 };
 
 ////////////////////////////////////
@@ -102,7 +103,8 @@ class GLITCH_DELAY_EFFECT : public AudioStream
   int                   m_pending_glitch_time_in_ms;
 
   int                   m_glitch_updates;
-
+  bool                  m_shift_forwards;
+  
   void                  start_glitch();
   void                  update_glitch();
   

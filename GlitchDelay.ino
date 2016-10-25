@@ -174,11 +174,11 @@ void loop()
 
   if( time_in_ms > next_update )
   {
-    next_update = time_in_ms + 4000;
+    next_update = time_in_ms + 5000;
     
     if( !glitch_delay_effect.glitch_active() )
     {
-      const int glitch_duration = 2000;
+      const int glitch_duration = 3000;
       
       glitch_delay_effect.activate_glitch( glitch_duration );
       
