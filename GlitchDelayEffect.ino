@@ -130,7 +130,7 @@ bool PLAY_HEAD::position_inside_next_read( int position, int read_size ) const
     else
     {
       // not cross-fading
-      const int read_end = m_delay_buffer.wrap_to_buffer( m_current_play_head + FIXED_FADE_TIME_SAMPLES );
+      const int read_end = m_delay_buffer.wrap_to_buffer( m_current_play_head + read_size );
       if( position_inside_section( position, m_current_play_head, read_end ) )
       {
         return true;
@@ -249,10 +249,10 @@ void PLAY_HEAD::disable_loop()
   m_loop_end                        = -1;
 }
 
-void PLAY_HEAD::shift_loop( const DELAY_BUFFER& delay_buffer, int offset )
+void PLAY_HEAD::shift_loop( int offset )
 {
-  m_loop_start      = delay_buffer.wrap_to_buffer( m_loop_start + offset );
-  m_loop_end        = delay_buffer.wrap_to_buffer( m_loop_end + offset );
+  m_loop_start      = m_delay_buffer.wrap_to_buffer( m_loop_start + offset );
+  m_loop_end        = m_delay_buffer.wrap_to_buffer( m_loop_end + offset );
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -521,11 +521,11 @@ void GLITCH_DELAY_EFFECT::update_glitch()
   
       if( m_shift_forwards )
       {
-        m_play_head.shift_loop( m_delay_buffer, SHIFT_SPEED );
+        m_play_head.shift_loop( SHIFT_SPEED );
       }
       else
       {
-        m_play_head.shift_loop( m_delay_buffer, -SHIFT_SPEED );
+        m_play_head.shift_loop( -SHIFT_SPEED );
       }
     }
   }
@@ -565,10 +565,10 @@ void GLITCH_DELAY_EFFECT::update()
     if( glitch_active() )
     {  
         // write head frozen during glitch (after initial cross fade)
-        /*if( !m_play_head.initial_loop_crossfade_complete() )
+        if( !m_play_head.initial_loop_crossfade_complete() )
         {
           m_delay_buffer.write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
-        }*/
+        }
 
         ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "Glitch - reading over write buffer\n" );
         m_play_head.read_from_play_head( block->data, AUDIO_BLOCK_SAMPLES );

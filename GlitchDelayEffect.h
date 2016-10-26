@@ -16,7 +16,6 @@ class PLAY_HEAD
   
   int                         m_current_play_head;
   int                         m_destination_play_head;
-  int                         m_fade_window_size_in_samples;
   int                         m_fade_samples_remaining;
 
   int                         m_loop_start;
@@ -46,7 +45,7 @@ public:
 
   void                        enable_loop( int start, int end );
   void                        disable_loop();
-  void                        shift_loop( const DELAY_BUFFER& delay_buffer, int offset );
+  void                        shift_loop( int offset );
 };
 
 ////////////////////////////////////
