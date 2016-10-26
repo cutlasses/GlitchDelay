@@ -118,7 +118,7 @@ void loop()
   }
 #endif
 
-  /*
+/* 
   const bool valid_bpm = glitch_delay_interface.tap_bpm().valid_bpm();
   glitch_delay_interface.update( time_in_ms );
 
@@ -165,7 +165,7 @@ void loop()
   {
     glitch_delay_effect.set_bit_depth( 16 );
   }
-  */
+*/
 
   // TEST CASE
 

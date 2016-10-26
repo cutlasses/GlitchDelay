@@ -463,6 +463,7 @@ bool GLITCH_DELAY_EFFECT::glitch_active() const
 
 void GLITCH_DELAY_EFFECT::start_glitch()
 {
+  ASSERT_MSG( can_start_glitch(), "Invalid glitch start\n" );
   ASSERT_MSG( m_glitch_updates == -1, "GLITCH_DELAY_EFFECT::start_glitch() trying to start a glitch during a glitch\n" );
   
   if( m_play_head.crossfade_active() )
@@ -477,9 +478,17 @@ void GLITCH_DELAY_EFFECT::start_glitch()
 
   // set the loop so it ends just before the write buffer - otherwise we'll loop over a jump in audio
   const int loop_size                     = round( AUDIO_SAMPLE_RATE * LOOP_SIZE_IN_S );
-  const int loop_start                    = m_delay_buffer.wrap_to_buffer( m_delay_buffer.write_head() + FIXED_FADE_TIME_SAMPLES + 1 );
-  const int loop_end                      = m_delay_buffer.wrap_to_buffer( loop_start + loop_size );
 
+  // number of write blocks needed to do the fade (write head will jump in these amounts
+  int fade_blocks                         = FIXED_FADE_TIME_SAMPLES / AUDIO_BLOCK_SAMPLES;
+  if( FIXED_FADE_TIME_SAMPLES % FIXED_FADE_TIME_SAMPLES > 0 )
+  {
+    ++fade_blocks;
+  }
+  const int fade_samples                  = fade_blocks * AUDIO_BLOCK_SAMPLES;
+  
+  const int loop_start                    = m_delay_buffer.wrap_to_buffer( m_delay_buffer.write_head() + fade_samples + 1 );
+  const int loop_end                      = m_delay_buffer.wrap_to_buffer( loop_start + loop_size );
 
   ASSERT_MSG( loop_size + FIXED_FADE_TIME_SAMPLES + 1 < DELAY_BUFFER_SIZE_IN_BYTES, "Loop size too large\n" );
   ASSERT_MSG( loop_size > FIXED_FADE_TIME_SAMPLES * 2, "Loop size too small\n" );
@@ -570,7 +579,7 @@ void GLITCH_DELAY_EFFECT::update()
           m_delay_buffer.write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
         }
 
-        ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "Glitch - reading over write buffer\n" );
+        ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head() + 1, AUDIO_BLOCK_SAMPLES ), "Glitch - reading over write buffer\n" ); // position after write head is OLD DATA
         m_play_head.read_from_play_head( block->data, AUDIO_BLOCK_SAMPLES );
     }
     else
@@ -591,7 +600,7 @@ void GLITCH_DELAY_EFFECT::update()
 
       m_delay_buffer.write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
 
-      ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "Non - reading over write buffer\n" );
+      ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head() + 1, AUDIO_BLOCK_SAMPLES ), "Non - reading over write buffer\n" ); // position after write head is OLD DATA
       m_play_head.read_from_play_head( block->data, AUDIO_BLOCK_SAMPLES );
     }
 
