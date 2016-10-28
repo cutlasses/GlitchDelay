@@ -118,7 +118,7 @@ void loop()
   }
 #endif
 
-/* 
+
   const bool valid_bpm = glitch_delay_interface.tap_bpm().valid_bpm();
   glitch_delay_interface.update( time_in_ms );
 
@@ -165,11 +165,11 @@ void loop()
   {
     glitch_delay_effect.set_bit_depth( 16 );
   }
-*/
+
 
   // TEST CASE
 
-
+    /*
   static uint32_t next_update = 5000;
   glitch_delay_interface.update( time_in_ms );
 
@@ -190,6 +190,7 @@ void loop()
   delay_mixer.gain( FEEDBACK_CHANNEL, 0.0f );
   wet_dry_mixer.gain( DRY_CHANNEL, 0.0f );
   wet_dry_mixer.gain( WET_CHANNEL, 1.0f );
+  */
 
 
 #ifdef DEBUG_OUTPUT

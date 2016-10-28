@@ -46,6 +46,10 @@ public:
   void                        enable_loop( int start, int end );
   void                        disable_loop();
   void                        shift_loop( int offset );
+
+#ifdef DEBUG_OUTPUT
+  void                        debug_output();
+#endif
 };
 
 ////////////////////////////////////
@@ -84,6 +88,10 @@ public:
   void                        set_bit_depth( int sample_size_in_bits );
 
   void                        fade_in_write();
+
+#ifdef DEBUG_OUTPUT
+  void                        debug_output();
+#endif
 };
 
 ////////////////////////////////////
