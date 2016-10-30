@@ -433,11 +433,6 @@ void DELAY_BUFFER::write_to_buffer( const int16_t* source, int size )
   }
 }
 
-void DELAY_BUFFER::set_write_head( int new_write_head )
-{
-  m_write_head = new_write_head;
-}
-
 void DELAY_BUFFER::set_bit_depth( int sample_size_in_bits )
 {
   // NOTE - do not print in this function, it is called before Serial is configured
@@ -456,6 +451,11 @@ void DELAY_BUFFER::fade_in_write()
 {
   ASSERT_MSG( m_fade_samples_remaining == 0, "DELAY_BUFFER::fade_in_write() trying to start a fade during a fade" );
   m_fade_samples_remaining = FIXED_FADE_TIME_SAMPLES;
+}
+
+void DELAY_BUFFER::set_write_head( int new_write_head )
+{
+  m_write_head = new_write_head;
 }
 
 #ifdef DEBUG_OUTPUT
@@ -514,7 +514,7 @@ void GLITCH_DELAY_EFFECT::start_glitch()
   // set the loop so it ends just before the write buffer - otherwise we'll loop over a jump in audio
   const int loop_size                     = round( AUDIO_SAMPLE_RATE * LOOP_SIZE_IN_S );
 
-  // number of write blocks needed to do the fade (write head will jump in these amounts
+  // number of write blocks needed to do the fade (write head will jump in these amounts)
   int fade_blocks                         = FIXED_FADE_TIME_SAMPLES / AUDIO_BLOCK_SAMPLES;
   if( FIXED_FADE_TIME_SAMPLES % AUDIO_BLOCK_SAMPLES > 0 )
   {
@@ -549,57 +549,76 @@ void GLITCH_DELAY_EFFECT::update_glitch()
   {
     --m_glitch_updates;
 
-    /*if( m_play_head.initial_loop_crossfade_complete() && !m_delay_buffer.write_buffer_fading_in() )
+    if( m_play_head.initial_loop_crossfade_complete() )
     {
+      ASSERT_MSG( !m_delay_buffer.write_buffer_fading_in(), "How is this fading in?" );
+
+      bool can_shift = false;
+
       if( m_shift_forwards )
       {
-        const int new_loop_end = m_delay_buffer.wrap_to_buffer( m_play_head.loop_end() + (SHIFT_SPEED + FIXED_FADE_TIME_SAMPLES + AUDIO_BLOCK_SAMPLES) );
-  
-        // check for crossing boundary
-        if( new_loop_end == m_delay_buffer.write_head() ||
-            (new_loop_end > m_delay_buffer.write_head()) != (m_play_head.loop_end() > m_delay_buffer.write_head()) )
+        const int new_loop_start  = m_delay_buffer.wrap_to_buffer( m_play_head.loop_end() + SHIFT_SPEED );
+        const int new_loop_end    = m_delay_buffer.wrap_to_buffer( m_play_head.loop_end() + SHIFT_SPEED + FIXED_FADE_TIME_SAMPLES );
+
+        if( m_play_head.position_inside_section( new_loop_start, new_loop_end, m_delay_buffer.write_head() ) )
         {
           m_shift_forwards = false;
+        }
+        else
+        {
+          can_shift = true;
         }
       }
       else
       {
-        const int new_loop_start = m_delay_buffer.wrap_to_buffer( m_play_head.loop_start() - (SHIFT_SPEED + FIXED_FADE_TIME_SAMPLES + AUDIO_BLOCK_SAMPLES) );
+         const int new_loop_start = m_delay_buffer.wrap_to_buffer( m_play_head.loop_start() - SHIFT_SPEED );
+         const int new_loop_end   = m_delay_buffer.wrap_to_buffer( m_play_head.loop_end() - SHIFT_SPEED );
   
-        if( new_loop_start == m_delay_buffer.write_head() ||
-            (new_loop_start > m_delay_buffer.write_head()) != (m_play_head.loop_start() > m_delay_buffer.write_head()) )
+        if( m_play_head.position_inside_section( new_loop_start, new_loop_end, m_delay_buffer.write_head() ) )
         {
           m_shift_forwards = true;
-        }      
+        }
+        else
+        {
+          can_shift = true;
+        }    
       }
-  
-      if( m_shift_forwards )
+
+      if( can_shift )
       {
-        m_play_head.shift_loop( SHIFT_SPEED );
-      }
-      else
-      {
-        m_play_head.shift_loop( -SHIFT_SPEED );
+        if( m_shift_forwards )
+        {
+          m_play_head.shift_loop( SHIFT_SPEED );
+        }
+        else
+        {
+          m_play_head.shift_loop( -SHIFT_SPEED );
+        }
       }
 
       ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "GLITCH_DELAY_EFFECT::update_glitch() shift error" );
-    }*/
+    }
   }
   
   if( m_glitch_updates == 0 && !m_play_head.crossfade_active() )
   {
 #ifdef DEBUG_OUTPUT
     Serial.print("End glitch\n");
+    m_delay_buffer.debug_output();
+    m_play_head.debug_output();
  #endif
-    const int new_write_head = m_delay_buffer.wrap_to_buffer( m_play_head.current_position() + m_current_play_head_offset_in_samples );
 
-    m_play_head.disable_loop();
-
-    // as we stopped writing whilst glitching, we need to fade the new audio on-top of the old written audio
+    // note - ensure we overwrite old write boundary
+    const int new_write_head = m_delay_buffer.wrap_to_buffer( m_delay_buffer.write_head() - FIXED_FADE_TIME_SAMPLES );
 
     // set the write head outside of the glitch loop window
     m_delay_buffer.set_write_head( new_write_head );
+    
+    // as we stopped writing whilst glitching, we need to fade the new audio on-top of the old written audio
     m_delay_buffer.fade_in_write();
+
+    m_play_head.disable_loop();
+    m_play_head.set_play_head( m_current_play_head_offset_in_samples );
 
     m_glitch_updates = -1; // glitch not active
   }
@@ -628,16 +647,6 @@ void GLITCH_DELAY_EFFECT::update()
         {
           m_delay_buffer.write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
         }
-
-#ifdef DEBUG_OUTPUT
-        if( m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ) )
-        {
-          Serial.print("Glitch - reading over write buffer\n");
-          m_delay_buffer.debug_output();
-          m_play_head.debug_output();
-          Serial.print("\n");
-        }
-#endif
 
         ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "Glitch - reading over write buffer\n" ); // position after write head is OLD DATA
         m_play_head.read_from_play_head( block->data, AUDIO_BLOCK_SAMPLES );

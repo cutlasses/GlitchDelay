@@ -168,8 +168,7 @@ void loop()
 
 
   // TEST CASE
-
-    /*
+/*
   static uint32_t next_update = 5000;
   glitch_delay_interface.update( time_in_ms );
 
@@ -186,11 +185,11 @@ void loop()
       glitch_delay_interface.glitch_led().flash_on( time_in_ms, glitch_duration );
     }
   }
+  */
 
   delay_mixer.gain( FEEDBACK_CHANNEL, 0.0f );
   wet_dry_mixer.gain( DRY_CHANNEL, 0.0f );
   wet_dry_mixer.gain( WET_CHANNEL, 1.0f );
-  */
 
 
 #ifdef DEBUG_OUTPUT

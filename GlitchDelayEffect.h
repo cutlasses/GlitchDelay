@@ -84,10 +84,11 @@ public:
   
   void                        write_to_buffer( const int16_t* source, int size );
 
-  void                        set_write_head( int new_write_head );
   void                        set_bit_depth( int sample_size_in_bits );
 
   void                        fade_in_write();
+
+  void                        set_write_head( int new_head );
 
 #ifdef DEBUG_OUTPUT
   void                        debug_output();
