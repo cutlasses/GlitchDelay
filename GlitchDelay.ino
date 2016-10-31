@@ -118,7 +118,7 @@ void loop()
   }
 #endif
 
-
+  /*
   const bool valid_bpm = glitch_delay_interface.tap_bpm().valid_bpm();
   glitch_delay_interface.update( time_in_ms );
 
@@ -164,11 +164,10 @@ void loop()
   else
   {
     glitch_delay_effect.set_bit_depth( 16 );
-  }
+  }*/
 
 
   // TEST CASE
-/*
   static uint32_t next_update = 5000;
   glitch_delay_interface.update( time_in_ms );
 
@@ -178,14 +177,13 @@ void loop()
     
     if( glitch_delay_effect.can_start_glitch() )
     {
-      const int glitch_duration = 3000;
+      const int glitch_duration = 10000;
       
       glitch_delay_effect.activate_glitch( glitch_duration );
       
       glitch_delay_interface.glitch_led().flash_on( time_in_ms, glitch_duration );
     }
   }
-  */
 
   delay_mixer.gain( FEEDBACK_CHANNEL, 0.0f );
   wet_dry_mixer.gain( DRY_CHANNEL, 0.0f );

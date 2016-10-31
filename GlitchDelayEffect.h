@@ -89,6 +89,7 @@ public:
   void                        fade_in_write();
 
   void                        set_write_head( int new_head );
+  void                        set_loop_behind_write_head( PLAY_HEAD& play_head, int loop_size ) const;
 
 #ifdef DEBUG_OUTPUT
   void                        debug_output();
