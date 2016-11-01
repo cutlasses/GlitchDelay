@@ -12,9 +12,11 @@
 const float MIN_SPEED( 0.25f );
 const float MAX_SPEED( 4.0f );
 
-const float LOOP_SIZE_IN_S( 0.05f );
-const int FIXED_FADE_TIME_SAMPLES( (AUDIO_SAMPLE_RATE / 1000.0f ) * 10 ); // 10ms cross fade
-const int SHIFT_SPEED( 30 );
+const int FIXED_FADE_TIME_SAMPLES( (AUDIO_SAMPLE_RATE / 1000.0f ) * 4 ); // 4ms cross fade
+const float MIN_LOOP_SIZE_IN_SAMPLES( (FIXED_FADE_TIME_SAMPLES * 2) + AUDIO_BLOCK_SAMPLES );
+const float MAX_LOOP_SIZE_IN_SAMPLES( AUDIO_SAMPLE_RATE * 0.35f );
+const int MIN_SHIFT_SPEED( 0 );
+const int MAX_SHIFT_SPEED( 100 );
 
 
 /////////////////////////////////////////////////////////////////////
@@ -458,10 +460,10 @@ void DELAY_BUFFER::set_write_head( int new_write_head )
   m_write_head = new_write_head;
 }
 
-void DELAY_BUFFER::set_loop_behind_write_head( PLAY_HEAD& play_head, int loop_size ) const
+void DELAY_BUFFER::set_loop_behind_write_head( PLAY_HEAD& play_head, int loop_size, int speed_in_samples ) const
 {
 
-  int loop_end                            = m_write_head - ( FIXED_FADE_TIME_SAMPLES + AUDIO_BLOCK_SAMPLES + SHIFT_SPEED );
+  int loop_end                            = m_write_head - ( FIXED_FADE_TIME_SAMPLES + AUDIO_BLOCK_SAMPLES + speed_in_samples );
   loop_end                                = wrap_to_buffer( loop_end );
   const int loop_start                    = wrap_to_buffer( loop_end - loop_size );
 
@@ -489,104 +491,54 @@ GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
   m_input_queue_array(),
   m_delay_buffer(),
   m_play_head(m_delay_buffer),
-  m_current_play_head_offset_in_samples(1),
-  m_next_sample_size_in_bits(16),
-  m_next_play_head_offset_in_samples(1),
-  m_pending_glitch_time_in_ms(0),
-  m_glitch_updates(-1),
-  m_shift_forwards(true)
+  m_speed_ratio(1.0f),
+  m_speed_in_samples(MAX_SHIFT_SPEED),
+  m_loop_size_ratio(1.0f),
+  m_loop_size_in_samples(MAX_LOOP_SIZE_IN_SAMPLES),
+  m_next_sample_size_in_bits(16)
 {
-
-}
-
-bool GLITCH_DELAY_EFFECT::can_start_glitch() const
-{
-  return !glitch_active() && !m_delay_buffer.write_buffer_fading_in();
-}
-
-bool GLITCH_DELAY_EFFECT::glitch_active() const
-{
-  return m_glitch_updates >= 0;
+  start_glitch();
 }
 
 void GLITCH_DELAY_EFFECT::start_glitch()
 {
-  ASSERT_MSG( can_start_glitch(), "Invalid glitch start\n" );
-  ASSERT_MSG( m_glitch_updates == -1, "GLITCH_DELAY_EFFECT::start_glitch() trying to start a glitch during a glitch\n" );
-  
   if( m_play_head.crossfade_active() )
   {
     return;
   }
+
+  float r = (random(1000) / 1000.0f) * 0.25f;
+  r += 0.75f;
   
-  const float updates_per_ms              = ( AUDIO_SAMPLE_RATE_EXACT / AUDIO_BLOCK_SAMPLES ) / 1000.0f;
-
-  m_glitch_updates                        = round( m_pending_glitch_time_in_ms * updates_per_ms );
-  m_shift_forwards                        = true;
-
   // set the loop so it ends just before the write buffer - otherwise we'll loop over a jump in audio
-  const int loop_size                     = round( AUDIO_SAMPLE_RATE * LOOP_SIZE_IN_S );
+  m_loop_size_in_samples                  = round( lerp<float>( MIN_LOOP_SIZE_IN_SAMPLES, MAX_LOOP_SIZE_IN_SAMPLES, m_loop_size_ratio * r ) );
+  m_speed_in_samples                      = round( lerp<float>( MIN_SHIFT_SPEED, MAX_SHIFT_SPEED, m_speed_ratio * r ) );
 
-  m_delay_buffer.set_loop_behind_write_head( m_play_head, loop_size );
-
-  m_pending_glitch_time_in_ms             = 0;
-
-#ifdef DEBUG_OUTPUT
-    Serial.print("Start glitch\n");
-    m_delay_buffer.debug_output();
-    m_play_head.debug_output();
- #endif
+  m_delay_buffer.set_loop_behind_write_head( m_play_head, m_loop_size_in_samples, m_speed_in_samples );
 }
 
 void GLITCH_DELAY_EFFECT::update_glitch()
 {
-  if( m_glitch_updates > 0 )
+  ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "GLITCH_DELAY_EFFECT::update_glitch() shift error" );
+
+  // check whether the write head is about to run over the read head, in which case cross fade read head to new position
+  const int extended_start = m_delay_buffer.wrap_to_buffer( m_play_head.loop_start() - ( FIXED_FADE_TIME_SAMPLES + FIXED_FADE_TIME_SAMPLES + AUDIO_BLOCK_SAMPLES ) );
+  if( m_play_head.position_inside_section( m_delay_buffer.write_head(), extended_start, m_play_head.loop_end() ) )
   {
-    --m_glitch_updates;
-
-    ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "GLITCH_DELAY_EFFECT::update_glitch() shift error" );
-
-    // check whether the write head is about to run over the read head, in which case cross fade read head to new position
-    const int extended_start = m_delay_buffer.wrap_to_buffer( m_play_head.loop_start() - ( FIXED_FADE_TIME_SAMPLES + FIXED_FADE_TIME_SAMPLES + AUDIO_BLOCK_SAMPLES ) );
-    if( m_play_head.position_inside_section( m_delay_buffer.write_head(), extended_start, m_play_head.loop_end() ) )
-    {
-      const int loop_size = round( AUDIO_SAMPLE_RATE * LOOP_SIZE_IN_S );
-      m_delay_buffer.set_loop_behind_write_head( m_play_head, loop_size );
-    }
-
-    if( m_play_head.initial_loop_crossfade_complete() )
-    {
-     const float r = random( 100 ) / 100.0f;
-      m_play_head.shift_loop( SHIFT_SPEED * r );
-    }
-
-    ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "GLITCH_DELAY_EFFECT::update_glitch() shift error" );
+    start_glitch();
   }
-  
-  if( m_glitch_updates == 0 && !m_play_head.crossfade_active() )
+
+  if( m_play_head.initial_loop_crossfade_complete() )
   {
-#ifdef DEBUG_OUTPUT
-    Serial.print("End glitch\n");
-    m_delay_buffer.debug_output();
-    m_play_head.debug_output();
- #endif
-
-    m_play_head.disable_loop();
-    m_play_head.set_play_head( m_current_play_head_offset_in_samples );
-
-    m_glitch_updates = -1; // glitch not active
+    m_play_head.shift_loop( m_speed_in_samples );
   }
+
+  ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "GLITCH_DELAY_EFFECT::update_glitch() shift error" );
 }
 
 void GLITCH_DELAY_EFFECT::update()
 {        
-  m_delay_buffer.set_bit_depth( m_next_sample_size_in_bits);
-
-  // starting glitch
-  if( m_pending_glitch_time_in_ms > 0 )
-  {
-    start_glitch();
-  }
+  m_delay_buffer.set_bit_depth( m_next_sample_size_in_bits );
 
   update_glitch();
 
@@ -594,23 +546,6 @@ void GLITCH_DELAY_EFFECT::update()
 
   if( block != nullptr )
   {
-      if( !glitch_active() )
-      {
-        // update the play head position
-        if( m_next_play_head_offset_in_samples != m_current_play_head_offset_in_samples )
-        {
-          m_current_play_head_offset_in_samples = m_next_play_head_offset_in_samples;
-          const int new_playhead                = m_delay_buffer.position_offset_from_head( m_next_play_head_offset_in_samples );
-          m_play_head.set_play_head( new_playhead );
-  
-  #ifdef DEBUG_OUTPUT
-          Serial.print( "Set playhead " );
-          Serial.print( new_playhead );
-          Serial.print( "\n" );
-  #endif      
-        }
-      }
-
     m_delay_buffer.write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
 
     ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "Non - reading over write buffer\n" ); // position after write head is OLD DATA
@@ -622,29 +557,19 @@ void GLITCH_DELAY_EFFECT::update()
   }
 }
 
-void GLITCH_DELAY_EFFECT::set_delay_time_in_ms( int time_in_ms )
-{
-  m_next_play_head_offset_in_samples = m_delay_buffer.delay_offset_from_time( time_in_ms );
-}
-
-void GLITCH_DELAY_EFFECT::set_delay_time_as_ratio( float ratio_of_max_delay )
-{
-  ASSERT_MSG( ratio_of_max_delay >= 0.0f && ratio_of_max_delay <= 1.0f, "GLITCH_DELAY_EFFECT::set_delay_time()" );
-
-  // quantize to 32 steps to avoid small fluctuations
-  ratio_of_max_delay = ( static_cast<int>( ratio_of_max_delay * 32.0f ) ) / 32.0f;
-
-  m_next_play_head_offset_in_samples = m_delay_buffer.delay_offset_from_ratio( ratio_of_max_delay );
-}
-
 void GLITCH_DELAY_EFFECT::set_bit_depth( int sample_size_in_bits )
 {
   m_next_sample_size_in_bits = sample_size_in_bits;
   //set_bit_depth_impl( sample_size_in_bits );
 }
 
-void GLITCH_DELAY_EFFECT::activate_glitch( int active_time_in_ms )
+void GLITCH_DELAY_EFFECT::set_speed( float speed )
 {
-  m_pending_glitch_time_in_ms = active_time_in_ms;
+  m_speed_ratio = speed;
+}
+
+void GLITCH_DELAY_EFFECT::set_loop_size( float loop_size )
+{
+  m_loop_size_ratio = loop_size;
 }
 

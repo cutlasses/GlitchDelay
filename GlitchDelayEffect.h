@@ -89,7 +89,7 @@ public:
   void                        fade_in_write();
 
   void                        set_write_head( int new_head );
-  void                        set_loop_behind_write_head( PLAY_HEAD& play_head, int loop_size ) const;
+  void                        set_loop_behind_write_head( PLAY_HEAD& play_head, int loop_size, int speed_in_samples ) const;
 
 #ifdef DEBUG_OUTPUT
   void                        debug_output();
@@ -105,17 +105,17 @@ class GLITCH_DELAY_EFFECT : public AudioStream
 
   PLAY_HEAD             m_play_head;
 
-  int                   m_current_play_head_offset_in_samples;
+  float                 m_speed_ratio;
+  int                   m_speed_in_samples;
+
+  float                 m_loop_size_ratio;
+  int                   m_loop_size_in_samples;
 
   // store 'next' values, otherwise interrupt could be called during calculation of values
   int                   m_next_sample_size_in_bits;
-  int                   m_next_play_head_offset_in_samples;
-  int                   m_pending_glitch_time_in_ms;
 
-  int                   m_glitch_updates;
   bool                  m_shift_forwards;
 
-  bool                  glitch_active() const;
   void                  start_glitch();
   void                  update_glitch();
   
@@ -123,15 +123,11 @@ public:
 
   GLITCH_DELAY_EFFECT();
 
-  bool                  can_start_glitch() const;
-
   virtual void          update();
 
-  void                  set_delay_time_in_ms( int time_in_ms );
-  void                  set_delay_time_as_ratio( float ratio_of_max_delay );
   void                  set_bit_depth( int sample_size_in_bits );
-
-  void                  activate_glitch( int active_time_in_ms );
+  void                  set_speed( float speed );
+  void                  set_loop_size( float loop_size );
 };
 
 

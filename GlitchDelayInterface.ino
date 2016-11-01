@@ -2,8 +2,8 @@
 #include "CompileSwitches.h"
   
 GLITCH_DELAY_INTERFACE::GLITCH_DELAY_INTERFACE() :
-  m_random_dial( RANDOM_DIAL_PIN ),
-  m_delay_dial( DELAY_DIAL_PIN ),
+  m_loop_size_dial( LOOP_SIZE_DIAL_PIN ),
+  m_loop_speed_dial( LOOP_SPEED_DIAL_PIN ),
   m_feedback_dial( FEEDBACK_DIAL_PIN ),
   m_mix_dial( MIX_DIAL_PIN ),
   m_freeze_button( FREEZE_BUTTON_PIN, FREEZE_BUTTON_IS_TOGGLE ),
@@ -38,8 +38,8 @@ void GLITCH_DELAY_INTERFACE::setup()
 
 void GLITCH_DELAY_INTERFACE::update( uint32_t time_in_ms )
 {  
-  m_random_dial.update() ;
-  m_delay_dial.update();
+  m_loop_size_dial.update() ;
+  m_loop_speed_dial.update();
   m_feedback_dial.update();
   m_mix_dial.update();
   
@@ -117,14 +117,14 @@ void GLITCH_DELAY_INTERFACE::update( uint32_t time_in_ms )
 #endif // DEBUG_OUTPUT
 }
 
-const DIAL& GLITCH_DELAY_INTERFACE::random_dial() const
+const DIAL& GLITCH_DELAY_INTERFACE::loop_size_dial() const
 {
-  return m_random_dial;
+  return m_loop_size_dial;
 }
 
-const DIAL& GLITCH_DELAY_INTERFACE::delay_dial() const
+const DIAL& GLITCH_DELAY_INTERFACE::loop_speed_dial() const
 {
-  return m_delay_dial;
+  return m_loop_speed_dial;
 }
 
 const DIAL& GLITCH_DELAY_INTERFACE::feedback_dial() const

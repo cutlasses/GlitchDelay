@@ -28,7 +28,7 @@ const int DRY_CHANNEL( 0 );
 const int WET_CHANNEL( 1 );
 const int FEEDBACK_CHANNEL( 1 );
 
-const float MAX_FEEDBACK( 0.75f );
+const float MAX_FEEDBACK( 0.95f );
 
 #ifdef STANDALONE_AUDIO
 AudioPlaySdRaw           raw_player;
@@ -118,37 +118,8 @@ void loop()
   }
 #endif
 
-  /*
-  const bool valid_bpm = glitch_delay_interface.tap_bpm().valid_bpm();
   glitch_delay_interface.update( time_in_ms );
 
-  const int beat_duration   = valid_bpm ? glitch_delay_interface.tap_bpm().beat_duration_ms() : 1.0f;
-
-  if( glitch_delay_effect.can_start_glitch() && glitch_delay_interface.tap_bpm().beat_type() == TAP_BPM::AUTO_BEAT )
-  {
-    // update random glitch
-    const float randomness      = glitch_delay_interface.random_dial().value();
-    const float r               = random( 100 ) / 100.0f; // max dial -> glitch 100% of the time
-    if( r < randomness )
-    {
-      const int glitch_duration = (beat_duration * 4);
- 
-      glitch_delay_effect.activate_glitch( glitch_duration );
-      
-      glitch_delay_interface.glitch_led().flash_on( time_in_ms, glitch_duration );
-    }
-  }
-
-  if( valid_bpm )
-  {
-    glitch_delay_effect.set_delay_time_in_ms( glitch_delay_interface.tap_bpm().beat_duration_ms() * 0.25f );    
-  }
-  else
-  {
-    const float delay = clamp( glitch_delay_interface.delay_dial().value(), 0.0f, 1.0f );
-    glitch_delay_effect.set_delay_time_as_ratio( delay );
-  }
-  
   const float wet_dry = clamp( glitch_delay_interface.mix_dial().value(), 0.0f, 1.0f );
   wet_dry_mixer.gain( DRY_CHANNEL, 1.0f - wet_dry );
   wet_dry_mixer.gain( WET_CHANNEL, wet_dry );
@@ -164,31 +135,13 @@ void loop()
   else
   {
     glitch_delay_effect.set_bit_depth( 16 );
-  }*/
-
-
-  // TEST CASE
-  static uint32_t next_update = 5000;
-  glitch_delay_interface.update( time_in_ms );
-
-  if( time_in_ms > next_update )
-  {
-    next_update = time_in_ms + 5000;
-    
-    if( glitch_delay_effect.can_start_glitch() )
-    {
-      const int glitch_duration = 10000;
-      
-      glitch_delay_effect.activate_glitch( glitch_duration );
-      
-      glitch_delay_interface.glitch_led().flash_on( time_in_ms, glitch_duration );
-    }
   }
 
-  delay_mixer.gain( FEEDBACK_CHANNEL, 0.0f );
-  wet_dry_mixer.gain( DRY_CHANNEL, 0.0f );
-  wet_dry_mixer.gain( WET_CHANNEL, 1.0f );
+  const float speed = clamp( glitch_delay_interface.loop_speed_dial().value(), 0.0f, 1.0f );
+  glitch_delay_effect.set_speed( speed );
 
+  const float size = clamp( glitch_delay_interface.loop_size_dial().value(), 0.0f, 1.0f );
+  glitch_delay_effect.set_loop_size( size );
 
 #ifdef DEBUG_OUTPUT
 /*

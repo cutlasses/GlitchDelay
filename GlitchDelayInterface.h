@@ -5,8 +5,8 @@
 
 class GLITCH_DELAY_INTERFACE
 {
-  static const int      RANDOM_DIAL_PIN                 = 20;
-  static const int      DELAY_DIAL_PIN                  = 17;
+  static const int      LOOP_SIZE_DIAL_PIN              = 20;
+  static const int      LOOP_SPEED_DIAL_PIN             = 17;
   static const int      FEEDBACK_DIAL_PIN               = 21;
   static const int      MIX_DIAL_PIN                    = 16;
   static const int      FREEZE_BUTTON_PIN               = 2;
@@ -20,8 +20,8 @@ class GLITCH_DELAY_INTERFACE
  
   static const int32_t  BIT_DEPTH_BUTTON_HOLD_TIME_MS   = 2000;
   
-  DIAL              m_random_dial;
-  DIAL              m_delay_dial;
+  DIAL              m_loop_size_dial;
+  DIAL              m_loop_speed_dial;
   DIAL              m_feedback_dial;
   DIAL              m_mix_dial;
 
@@ -44,8 +44,8 @@ public:
   void            setup();
   void            update( uint32_t time_in_ms );
 
-  const DIAL&     random_dial() const;
-  const DIAL&     delay_dial() const;
+  const DIAL&     loop_size_dial() const;
+  const DIAL&     loop_speed_dial() const;
   const DIAL&     feedback_dial() const;
   const DIAL&     mix_dial() const;
   const BUTTON&   freeze_button() const;
