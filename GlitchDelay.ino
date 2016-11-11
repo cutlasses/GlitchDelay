@@ -17,12 +17,18 @@
 #define SDCARD_MOSI_PIN  7
 #define SDCARD_SCK_PIN   14
 
+#ifdef USING_AUDIO_SHIELD
 AudioInputI2S            audio_input;
+AudioOutputI2S           audio_output;
+#else // !USING_AUDIO_SHIELD
+AudioInputAnalog            audio_input;
+AudioOutputAnalog           audio_output;
+#endif // !USING_AUDIO_SHIELD
+
 GLITCH_DELAY_EFFECT      glitch_delay_effect;
 AudioMixer4              delay_mixer;
 AudioMixer4              wet_dry_mixer;
 //AudioEffectDelay         audio_delay;
-AudioOutputI2S           audio_output;
 
 const int DRY_CHANNEL( 0 );
 const int WET_CHANNEL( 1 );
@@ -71,12 +77,14 @@ void setup()
 #endif // DEBUG_OUTPUT
 
   AudioMemory(16);
-  
+
+#ifdef USING_AUDIO_SHIELD
   sgtl5000_1.enable();
   sgtl5000_1.volume(0.8f);
 
   sgtl5000_1.lineInLevel( 10 );  // 0.56volts p-p
   sgtl5000_1.lineOutLevel( 13 );  // 3.16volts p-p
+#endif
   
   SPI.setMOSI(SDCARD_MOSI_PIN);
   SPI.setSCK(SDCARD_SCK_PIN);
