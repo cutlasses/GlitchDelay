@@ -38,7 +38,7 @@ void GLITCH_DELAY_INTERFACE::setup()
 
 void GLITCH_DELAY_INTERFACE::update( uint32_t time_in_ms )
 {  
-  m_loop_size_dial.update() ;
+  m_loop_size_dial.update();
   m_loop_speed_dial.update();
   m_feedback_dial.update();
   m_mix_dial.update();

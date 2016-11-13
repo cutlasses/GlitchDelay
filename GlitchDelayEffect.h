@@ -2,7 +2,7 @@
 
 #include <AudioStream.h>
 
-#define DELAY_BUFFER_SIZE_IN_BYTES     1024*50      // 50k
+#define DELAY_BUFFER_SIZE_IN_BYTES     1024*240      // 250k
 
 ////////////////////////////////////
 

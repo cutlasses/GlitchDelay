@@ -13,7 +13,7 @@ DIAL::DIAL( int data_pin ) :
 bool DIAL::update()
 {
   int new_value = analogRead( m_data_pin );
-  
+
   if( new_value != m_current_value )
   {
     m_current_value = new_value;
