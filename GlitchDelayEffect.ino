@@ -24,7 +24,15 @@ const int MAX_SHIFT_SPEED( 100 );
 int delay_buffer_size_in_samples( int sample_size_in_bits )
 {
   const int bytes_per_sample = sample_size_in_bits / 8;
-  return DELAY_BUFFER_SIZE_IN_BYTES / bytes_per_sample;
+
+  if( sample_size_in_bits % 8 != 0 )
+  {
+    return (DELAY_BUFFER_SIZE_IN_BYTES / bytes_per_sample) + 1;
+  }
+  else
+  {
+    return DELAY_BUFFER_SIZE_IN_BYTES / bytes_per_sample;
+  }
 }
 
 int convert_time_in_ms_to_samples( int time_in_ms )
@@ -355,9 +363,26 @@ void DELAY_BUFFER::write_sample( int16_t sample, int index )
   {
     case 8:
     {
-      int8_t sample8                      = (sample >> 8) & 0xff;
+      int8_t sample8                      = (sample >> 8) & 0x00ff;
       int8_t* sample_buffer               = reinterpret_cast<int8_t*>(m_buffer);
       sample_buffer[ index ]              = sample8;
+      break;
+    }
+    case 12:
+    {
+      int8_t* sample_buffer               = reinterpret_cast<int8_t*>(m_buffer);
+      if( index & 1 )
+      {
+        // odd indices
+        sample_buffer[ index ]            &= ( 0x00f0 | (( sample & 0xf000 ) >> 12) );
+        sample_buffer[ index + 1 ]        = (( sample & 0x0ff0 ) >> 4);
+      }
+      else
+      {
+        // even indices
+        sample_buffer[ index ]            = (sample >> 8);
+        sample_buffer[ index+1 ]          &= ( ( sample & 0x00f0 ) | 0x000f );
+      }
       break;
     }
     case 16:
@@ -377,13 +402,28 @@ int16_t DELAY_BUFFER::read_sample( int index ) const
   {
     case 8:
     {
-         const int8_t* sample_buffer    = reinterpret_cast<const int8_t*>(m_buffer);
+        const int8_t* sample_buffer    = reinterpret_cast<const int8_t*>(m_buffer);
         const int8_t sample            = sample_buffer[ index ];
 
         int16_t sample16               = sample;
         sample16                       <<= 8;
 
         return sample16;
+    }
+    case 12:
+    {
+      const int8_t* sample_buffer    = reinterpret_cast<const int8_t*>(m_buffer);
+      if( index & 1 )
+      {
+        // odd indices
+        return ( (( sample_buffer[index] & 0x000f ) << 12) | sample_buffer [index + 1 ] );
+      }
+      else
+      {
+        // even indices
+        return ( ( sample_buffer[index] << 8 ) | ( sample_buffer[index+1] & 0x00f0 ) );
+      }
+      break;
     }
     case 16:
     {
