@@ -23,14 +23,14 @@ const int MAX_SHIFT_SPEED( 100 );
 
 int delay_buffer_size_in_samples( int sample_size_in_bits )
 {
-  const int bytes_per_sample = sample_size_in_bits / 8;
-
   if( sample_size_in_bits % 8 != 0 )
   {
-    return (DELAY_BUFFER_SIZE_IN_BYTES / bytes_per_sample) + 1;
+    const float bytes_per_sample = sample_size_in_bits / 8.0f;
+    return static_cast<int>(DELAY_BUFFER_SIZE_IN_BYTES / bytes_per_sample);
   }
   else
   {
+    const int bytes_per_sample = sample_size_in_bits / 8;
     return DELAY_BUFFER_SIZE_IN_BYTES / bytes_per_sample;
   }
 }
@@ -370,6 +370,7 @@ void DELAY_BUFFER::write_sample( int16_t sample, int index )
     }
     case 12:
     {
+      Serial.print("12 bit write\n");
       int8_t* sample_buffer               = reinterpret_cast<int8_t*>(m_buffer);
       if( index & 1 )
       {
@@ -412,6 +413,7 @@ int16_t DELAY_BUFFER::read_sample( int index ) const
     }
     case 12:
     {
+      Serial.print("12 bit read\n");
       const int8_t* sample_buffer    = reinterpret_cast<const int8_t*>(m_buffer);
       if( index & 1 )
       {
@@ -535,7 +537,7 @@ GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
   m_speed_in_samples(MAX_SHIFT_SPEED),
   m_loop_size_ratio(1.0f),
   m_loop_size_in_samples(MAX_LOOP_SIZE_IN_SAMPLES),
-  m_next_sample_size_in_bits(16)
+  m_next_sample_size_in_bits(12)
 {
   start_glitch();
 }

@@ -166,7 +166,7 @@ void loop()
   glitch_delay_effect.set_loop_size( size );
 
 #ifdef DEBUG_OUTPUT
-
+/*
   static int count = 0;
   if( ++count % 1000 == 0 )
   {
@@ -188,7 +188,7 @@ void loop()
   
     Serial.print("****\n");
   }
-   
+*/   
 #endif // DEBUG_OUTPUT
     
 #ifdef PERF_CHECK
