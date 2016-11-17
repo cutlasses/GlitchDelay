@@ -23,16 +23,8 @@ const int MAX_SHIFT_SPEED( 100 );
 
 int delay_buffer_size_in_samples( int sample_size_in_bits )
 {
-  if( sample_size_in_bits % 8 != 0 )
-  {
     const float bytes_per_sample = sample_size_in_bits / 8.0f;
     return static_cast<int>(DELAY_BUFFER_SIZE_IN_BYTES / bytes_per_sample);
-  }
-  else
-  {
-    const int bytes_per_sample = sample_size_in_bits / 8;
-    return DELAY_BUFFER_SIZE_IN_BYTES / bytes_per_sample;
-  }
 }
 
 int convert_time_in_ms_to_samples( int time_in_ms )
@@ -363,33 +355,42 @@ void DELAY_BUFFER::write_sample( int16_t sample, int index )
   {
     case 8:
     {
-      int8_t sample8                      = (sample >> 8) & 0x00ff;
-      int8_t* sample_buffer               = reinterpret_cast<int8_t*>(m_buffer);
-      sample_buffer[ index ]              = sample8;
+      int8_t sample8                          = (sample >> 8) & 0x00ff;
+      int8_t* sample_buffer                   = reinterpret_cast<int8_t*>(m_buffer);
+      sample_buffer[ index ]                  = sample8;
       break;
     }
     case 12:
     {
-      Serial.print("12 bit write\n");
-      int8_t* sample_buffer               = reinterpret_cast<int8_t*>(m_buffer);
+      int8_t* sample_buffer                   = reinterpret_cast<int8_t*>(m_buffer);
+      
+      const int offset_index                  = static_cast<int>( index * 1.5f );
+
+      ASSERT_MSG( offset_index + 1 < DELAY_BUFFER_SIZE_IN_BYTES, "Buffer overrun" );
+      
       if( index & 1 )
       {
         // odd indices
-        sample_buffer[ index ]            &= ( 0x00f0 | (( sample & 0xf000 ) >> 12) );
-        sample_buffer[ index + 1 ]        = (( sample & 0x0ff0 ) >> 4);
+        const uint8_t prev_byte                  = sample_buffer[ offset_index ];
+        sample_buffer[ offset_index ]            = ( (sample & 0xf000) >> 12 ) | (prev_byte & 0x00f0);
+        sample_buffer[ offset_index + 1 ]        = (( sample & 0x0ff0 ) >> 4);
       }
       else
       {
         // even indices
-        sample_buffer[ index ]            = (sample >> 8);
-        sample_buffer[ index+1 ]          &= ( ( sample & 0x00f0 ) | 0x000f );
+        sample_buffer[ offset_index ]            = (sample >> 8);
+        const uint8_t prev_byte                  = sample_buffer[ offset_index + 1 ];
+        sample_buffer[ offset_index + 1 ]        = ( sample & 0x00f0 ) | ( prev_byte & 0x000f );
+
+        ASSERT_MSG( abs( read_sample( index ) - sample ) < 16, "EVEN 12 bit converison failure" );
       }
+      
       break;
     }
     case 16:
     {
-      int16_t* sample_buffer             = reinterpret_cast<int16_t*>(m_buffer);
-      sample_buffer[ index ]             = sample;
+      int16_t* sample_buffer                  = reinterpret_cast<int16_t*>(m_buffer);
+      sample_buffer[ index ]                  = sample;
       break;
     }
   }
@@ -413,18 +414,25 @@ int16_t DELAY_BUFFER::read_sample( int index ) const
     }
     case 12:
     {
-      Serial.print("12 bit read\n");
       const int8_t* sample_buffer    = reinterpret_cast<const int8_t*>(m_buffer);
+
+      const int offset_index = static_cast<int>( index * 1.5f );
+      
       if( index & 1 )
       {
-        // odd indices
-        return ( (( sample_buffer[index] & 0x000f ) << 12) | sample_buffer [index + 1 ] );
+          // odd indices
+          const uint8_t top           = sample_buffer[offset_index] & 0x000f;
+          const uint8_t bottom        = sample_buffer [offset_index + 1 ];
+          return ( (top << 12) | (bottom << 4) );
       }
       else
       {
-        // even indices
-        return ( ( sample_buffer[index] << 8 ) | ( sample_buffer[index+1] & 0x00f0 ) );
+          // even indices
+          const uint8_t top           = sample_buffer[offset_index];
+          const uint8_t bottom        = sample_buffer [offset_index + 1 ] & 0x00f0;
+          return ( (top << 8) | bottom );
       }
+    
       break;
     }
     case 16:
@@ -504,7 +512,6 @@ void DELAY_BUFFER::set_write_head( int new_write_head )
 
 void DELAY_BUFFER::set_loop_behind_write_head( PLAY_HEAD& play_head, int loop_size, int speed_in_samples ) const
 {
-
   int loop_end                            = m_write_head - ( FIXED_FADE_TIME_SAMPLES + AUDIO_BLOCK_SAMPLES + speed_in_samples );
   loop_end                                = wrap_to_buffer( loop_end );
   const int loop_start                    = wrap_to_buffer( loop_end - loop_size );
@@ -522,6 +529,8 @@ void DELAY_BUFFER::debug_output()
  Serial.print(m_write_head);
  Serial.print(" fade samples:");
  Serial.print(m_fade_samples_remaining);
+ Serial.print(" bit depth:");
+ Serial.print(m_sample_size_in_bits);
  Serial.print("\n"); 
 }
 #endif

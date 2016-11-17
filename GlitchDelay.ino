@@ -150,6 +150,7 @@ void loop()
   const float feedback = glitch_delay_interface.feedback_dial().value();
   delay_mixer.gain( FEEDBACK_CHANNEL, feedback * MAX_FEEDBACK );
 
+/*
   if( glitch_delay_interface.reduced_bit_depth() )
   {
     glitch_delay_effect.set_bit_depth( 8 );
@@ -158,6 +159,7 @@ void loop()
   {
     glitch_delay_effect.set_bit_depth( 16 );
   }
+*/
 
   const float speed = clamp( glitch_delay_interface.loop_speed_dial().value(), 0.0f, 1.0f );
   glitch_delay_effect.set_speed( speed );
@@ -166,10 +168,11 @@ void loop()
   glitch_delay_effect.set_loop_size( size );
 
 #ifdef DEBUG_OUTPUT
-/*
+
   static int count = 0;
   if( ++count % 1000 == 0 )
   {
+    /*
     Serial.print("Size ");
     Serial.print(size);
     Serial.print("\n");
@@ -187,8 +190,9 @@ void loop()
     Serial.print("\n");
   
     Serial.print("****\n");
+    */
   }
-*/   
+
 #endif // DEBUG_OUTPUT
     
 #ifdef PERF_CHECK
