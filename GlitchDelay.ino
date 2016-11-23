@@ -150,17 +150,6 @@ void loop()
   const float feedback = glitch_delay_interface.feedback_dial().value();
   delay_mixer.gain( FEEDBACK_CHANNEL, feedback * MAX_FEEDBACK );
 
-/*
-  if( glitch_delay_interface.reduced_bit_depth() )
-  {
-    glitch_delay_effect.set_bit_depth( 8 );
-  }
-  else
-  {
-    glitch_delay_effect.set_bit_depth( 16 );
-  }
-*/
-
   const float speed = clamp( glitch_delay_interface.loop_speed_dial().value(), 0.0f, 1.0f );
   glitch_delay_effect.set_speed( speed );
 

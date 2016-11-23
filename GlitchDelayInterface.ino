@@ -1,39 +1,39 @@
 #include "GlitchDelayInterface.h"
 #include "CompileSwitches.h"
+
   
 GLITCH_DELAY_INTERFACE::GLITCH_DELAY_INTERFACE() :
   m_loop_size_dial( LOOP_SIZE_DIAL_PIN ),
   m_loop_speed_dial( LOOP_SPEED_DIAL_PIN ),
   m_feedback_dial( FEEDBACK_DIAL_PIN ),
   m_mix_dial( MIX_DIAL_PIN ),
-  m_freeze_button( FREEZE_BUTTON_PIN, FREEZE_BUTTON_IS_TOGGLE ),
+  m_bpm_button( BPM_BUTTON_PIN, false ),
   m_mode_button( MODE_BUTTON_PIN, false ),
-  m_tap_bpm( MODE_BUTTON_PIN ),
+  m_tap_bpm( BPM_BUTTON_PIN ),
   m_beat_led(),
-  m_glitch_led(),
-  m_bit_depth_led(),
+  m_mode_leds(),
   m_current_mode( 0 ),
   m_change_bit_depth_valid( true ),
   m_reduced_bit_depth( false )
 {
   m_beat_led        = LED( LED_1_PIN );
-  m_glitch_led      = LED( LED_2_PIN );
-  m_bit_depth_led   = LED( LED_3_PIN ); 
+  m_mode_leds[0]    = LED( LED_2_PIN );
+  m_mode_leds[1]    = LED( LED_3_PIN ); 
 }
 
 void GLITCH_DELAY_INTERFACE::setup()
 {
-  m_freeze_button.setup();
+  m_bpm_button.setup();
   m_mode_button.setup();
 
   m_beat_led.setup();
   m_beat_led.set_brightness( 0.25f );
 
-  m_glitch_led.setup();
-  m_glitch_led.set_brightness( 0.25f );
-
-  m_bit_depth_led.setup();
-  m_bit_depth_led.set_brightness( 0.25f );
+  for( int i = 0; i < NUM_MODES; ++i )
+  {
+    m_mode_leds[i].setup();
+    m_mode_leds[i].set_brightness( 0.25f );
+  }
 }
 
 void GLITCH_DELAY_INTERFACE::update( uint32_t time_in_ms )
@@ -43,7 +43,7 @@ void GLITCH_DELAY_INTERFACE::update( uint32_t time_in_ms )
   m_feedback_dial.update();
   m_mix_dial.update();
   
-  m_freeze_button.update( time_in_ms );
+  m_bpm_button.update( time_in_ms );
   m_mode_button.update( time_in_ms );
 
   m_tap_bpm.update( time_in_ms );
@@ -52,7 +52,9 @@ void GLITCH_DELAY_INTERFACE::update( uint32_t time_in_ms )
   {
       m_beat_led.flash_on( time_in_ms, 100 );
   }
+  m_beat_led.update( time_in_ms );
 
+  /*
   if( m_mode_button.down_time_ms() > BIT_DEPTH_BUTTON_HOLD_TIME_MS && m_change_bit_depth_valid )
   {
     m_reduced_bit_depth = !m_reduced_bit_depth;
@@ -66,20 +68,19 @@ void GLITCH_DELAY_INTERFACE::update( uint32_t time_in_ms )
     // once the mode button has been released, we can change the mode again
     m_change_bit_depth_valid = true;
   }
+  */
 
-  m_beat_led.update( time_in_ms );
-  m_glitch_led.update( time_in_ms );
+  if( m_mode_button.single_click() )
+  {
+    m_current_mode = ( m_current_mode + 1 ) % NUM_MODES;
+  }
 
-  // update bit depth led
-  if( m_reduced_bit_depth )
+  for( int i = 0; i < NUM_MODES; ++i )
   {
-    m_bit_depth_led.set_active( true );
+    m_mode_leds[i].set_active( m_current_mode == i );
+     
+    m_mode_leds[i].update( time_in_ms );
   }
-  else
-  {
-    m_bit_depth_led.set_active( false );
-  }
-  m_bit_depth_led.update( time_in_ms );
 
 #ifdef DEBUG_OUTPUT
   /*
@@ -137,19 +138,9 @@ const DIAL& GLITCH_DELAY_INTERFACE::mix_dial() const
   return m_mix_dial;
 }
 
-const BUTTON& GLITCH_DELAY_INTERFACE::freeze_button() const
-{
-  return m_freeze_button;
-}
-
 const TAP_BPM& GLITCH_DELAY_INTERFACE::tap_bpm() const
 {
   return m_tap_bpm;
-}
-
-LED& GLITCH_DELAY_INTERFACE::glitch_led()
-{
-  return m_glitch_led;
 }
 
 int GLITCH_DELAY_INTERFACE::mode() const
