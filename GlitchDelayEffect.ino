@@ -17,7 +17,7 @@ const int MIN_LOOP_SIZE_IN_SAMPLES( (FIXED_FADE_TIME_SAMPLES * 2) + AUDIO_BLOCK_
 const int MAX_LOOP_SIZE_IN_SAMPLES( AUDIO_SAMPLE_RATE * 0.5f );
 const int MIN_SHIFT_SPEED( 0 );
 const int MAX_SHIFT_SPEED( 100 );
-const int MAX_JITTER_SIZE( AUDIO_SAMPLE_RATE * 0.1f );
+const int MAX_JITTER_SIZE( AUDIO_SAMPLE_RATE * 0.2f );
 
 
 /////////////////////////////////////////////////////////////////////
@@ -641,7 +641,7 @@ void GLITCH_DELAY_EFFECT::update_glitch()
         
         float r                 = (random(1000) / 1000.0f);
         r                       -= 0.5f; // r = -0.5 => 0.5
-        const int jitter_offset = MAX_JITTER_SIZE * r;
+        const int jitter_offset = MAX_JITTER_SIZE * r * m_speed_ratio;
   
         const int next_loop_start   = m_delay_buffer.wrap_to_buffer( m_play_head.loop_start() + jitter_offset );
   
