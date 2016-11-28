@@ -17,7 +17,7 @@ const int MIN_LOOP_SIZE_IN_SAMPLES( (FIXED_FADE_TIME_SAMPLES * 2) + AUDIO_BLOCK_
 const int MAX_LOOP_SIZE_IN_SAMPLES( AUDIO_SAMPLE_RATE * 0.5f );
 const int MIN_SHIFT_SPEED( 0 );
 const int MAX_SHIFT_SPEED( 100 );
-const int MAX_JITTER_SIZE( AUDIO_SAMPLE_RATE * 0.25f );
+const int MAX_JITTER_SIZE( AUDIO_SAMPLE_RATE * 0.1f );
 
 
 /////////////////////////////////////////////////////////////////////
@@ -626,29 +626,41 @@ void GLITCH_DELAY_EFFECT::update_glitch()
   {
     start_glitch();
   }
-
-  if( m_play_head.initial_loop_crossfade_complete() )
+  else
   {
-    if( m_loop_moving )
+    if( m_play_head.initial_loop_crossfade_complete() )
     {
-      m_play_head.shift_loop( m_speed_in_samples );
-    }
-    else if( !m_play_head.is_next_loop_set() )
-    {
-      // determine next loop - will be played when the current loop finishes
-      float r                 = (random(1000) / 1000.0f);
-      r                       -= 0.5f; // r = -0.5 => 0.5
-      const int jitter_offset = MAX_JITTER_SIZE * r;
+      if( m_loop_moving )
+      {
+        m_play_head.shift_loop( m_speed_in_samples );
+      }
+      else if( !m_play_head.is_next_loop_set() )
+      {
+        // determine next loop - will be played when the current loop finishes
+        
+        float r                 = (random(1000) / 1000.0f);
+        r                       -= 0.5f; // r = -0.5 => 0.5
+        const int jitter_offset = MAX_JITTER_SIZE * r;
+  
+        const int next_loop_start   = m_delay_buffer.wrap_to_buffer( m_play_head.loop_start() + jitter_offset );
+  
+        r           = (random(1000) / 1000.0f) * 0.25f;
+        r           = 1.0f + ( r - 0.125f ); // r = 0.875 => 1.125
+        const int next_loop_size    = round( lerp<float>( MIN_LOOP_SIZE_IN_SAMPLES, MAX_LOOP_SIZE_IN_SAMPLES, m_loop_size_ratio * r ) );
+  
+        const int next_loop_end     = m_delay_buffer.wrap_to_buffer( next_loop_start + next_loop_size );
+  
+        m_play_head.set_next_loop( next_loop_start, next_loop_end );
+        
 
-      const int next_loop_start   = m_delay_buffer.wrap_to_buffer( m_play_head.loop_start() + jitter_offset );
-
-      r           = (random(1000) / 1000.0f) * 0.25f;
-      r           = 1.0f + ( r - 0.125f ); // r = 0.875 => 1.125
-      const int next_loop_size    = round( lerp<float>( MIN_LOOP_SIZE_IN_SAMPLES, MAX_LOOP_SIZE_IN_SAMPLES, m_loop_size_ratio * r ) );
-
-      const int next_loop_end     = m_delay_buffer.wrap_to_buffer( next_loop_start + next_loop_size );
-
-      m_play_head.set_next_loop( next_loop_start, next_loop_end );
+        /*
+        const int next_loop_size    = round( lerp<float>( MIN_LOOP_SIZE_IN_SAMPLES, MAX_LOOP_SIZE_IN_SAMPLES, m_loop_size_ratio ) );
+  
+        const int next_loop_end     = m_delay_buffer.wrap_to_buffer( m_play_head.loop_start() + next_loop_size );
+  
+        m_play_head.set_next_loop( m_play_head.loop_start(), next_loop_end );
+        */
+      }
     }
   }
 
