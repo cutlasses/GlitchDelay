@@ -13,10 +13,11 @@ const float MIN_SPEED( 0.25f );
 const float MAX_SPEED( 4.0f );
 
 const int FIXED_FADE_TIME_SAMPLES( (AUDIO_SAMPLE_RATE / 1000.0f ) * 4 ); // 4ms cross fade
-const float MIN_LOOP_SIZE_IN_SAMPLES( (FIXED_FADE_TIME_SAMPLES * 2) + AUDIO_BLOCK_SAMPLES );
-const float MAX_LOOP_SIZE_IN_SAMPLES( AUDIO_SAMPLE_RATE * 0.35f );
+const int MIN_LOOP_SIZE_IN_SAMPLES( (FIXED_FADE_TIME_SAMPLES * 2) + AUDIO_BLOCK_SAMPLES );
+const int MAX_LOOP_SIZE_IN_SAMPLES( AUDIO_SAMPLE_RATE * 0.5f );
 const int MIN_SHIFT_SPEED( 0 );
 const int MAX_SHIFT_SPEED( 100 );
+const int MAX_JITTER_SIZE( AUDIO_SAMPLE_RATE * 0.25f );
 
 
 /////////////////////////////////////////////////////////////////////
@@ -65,7 +66,9 @@ PLAY_HEAD::PLAY_HEAD( const DELAY_BUFFER& delay_buffer ) :
   m_destination_play_head( 0 ),
   m_fade_samples_remaining( 0 ),
   m_loop_start( -1 ),
-  m_loop_end( -1 )
+  m_loop_end( -1 ),
+  m_next_loop_start( -1 ),
+  m_next_loop_end( -1 )
 {
   
 }
@@ -88,6 +91,18 @@ int PLAY_HEAD::loop_start() const
 int PLAY_HEAD::loop_end() const
 {
   return m_loop_end;
+}
+
+int PLAY_HEAD::loop_size() const
+{
+  if( m_loop_end > m_loop_start )
+  {
+    return m_loop_end - m_loop_start;
+  }
+  else
+  {
+    return ( m_delay_buffer.m_buffer_size_in_samples - m_loop_start ) + m_loop_end;
+  }
 }
 
 bool PLAY_HEAD::position_inside_section( int position, int start, int end ) const
@@ -161,6 +176,11 @@ bool PLAY_HEAD::initial_loop_crossfade_complete() const
   return m_initial_loop_crossfade_complete;
 }
 
+bool PLAY_HEAD::is_next_loop_set() const
+{
+  return m_next_loop_start >= 0;
+}
+
 bool PLAY_HEAD::crossfade_active() const
 {
   return m_current_play_head != m_destination_play_head;
@@ -229,6 +249,16 @@ void PLAY_HEAD::read_from_play_head( int16_t* dest, int size )
     {
       ASSERT_MSG( m_loop_start >= 0, "PLAY_HEAD::read_from_play_head() invalid loop start" );
       ASSERT_MSG( m_initial_loop_crossfade_complete, "looping before we've finished the cross-fade into the loop\n" );
+
+      if( is_next_loop_set() )
+      {
+        m_loop_start          = m_next_loop_start;
+        m_loop_end            = m_next_loop_end;
+
+        m_next_loop_start     = -1;
+        m_next_loop_end       = -1;
+      }
+      
       set_play_head( m_loop_start );  
     }
     
@@ -246,6 +276,14 @@ void PLAY_HEAD::enable_loop( int start, int end )
   // force a new cross fade
   m_destination_play_head           = m_loop_start;
   m_fade_samples_remaining          = FIXED_FADE_TIME_SAMPLES;
+}
+
+void PLAY_HEAD::set_next_loop( int start, int end )
+{
+  ASSERT_MSG( !is_next_loop_set(), "Next loop already set" );
+  
+  m_next_loop_start                 = start;
+  m_next_loop_end                   = end;
 }
 
 void PLAY_HEAD::disable_loop()
@@ -546,7 +584,9 @@ GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
   m_speed_in_samples(MAX_SHIFT_SPEED),
   m_loop_size_ratio(1.0f),
   m_loop_size_in_samples(MAX_LOOP_SIZE_IN_SAMPLES),
-  m_next_sample_size_in_bits(12)
+  m_loop_moving(true),
+  m_next_sample_size_in_bits(12),
+  m_next_loop_moving(true)
 {
   start_glitch();
 }
@@ -558,14 +598,22 @@ void GLITCH_DELAY_EFFECT::start_glitch()
     return;
   }
 
+  // set the loop so it ends just before the write buffer - otherwise we'll loop over a jump in audio
+  m_delay_buffer.set_loop_behind_write_head( m_play_head, m_loop_size_in_samples, m_speed_in_samples );
+
   float r = (random(1000) / 1000.0f) * 0.25f;
   r += 0.75f;
-  
-  // set the loop so it ends just before the write buffer - otherwise we'll loop over a jump in audio
-  m_loop_size_in_samples                  = round( lerp<float>( MIN_LOOP_SIZE_IN_SAMPLES, MAX_LOOP_SIZE_IN_SAMPLES, m_loop_size_ratio * r ) );
-  m_speed_in_samples                      = round( lerp<float>( MIN_SHIFT_SPEED, MAX_SHIFT_SPEED, m_speed_ratio * r ) );
 
-  m_delay_buffer.set_loop_behind_write_head( m_play_head, m_loop_size_in_samples, m_speed_in_samples );
+  m_loop_size_in_samples                  = round( lerp<float>( MIN_LOOP_SIZE_IN_SAMPLES, MAX_LOOP_SIZE_IN_SAMPLES, m_loop_size_ratio * r ) );
+
+  if( m_loop_moving )
+  {
+    m_speed_in_samples                    = round( lerp<float>( MIN_SHIFT_SPEED, MAX_SHIFT_SPEED, m_speed_ratio * r ) );
+  }
+  else
+  {
+    m_speed_in_samples                    = 0;
+  }
 }
 
 void GLITCH_DELAY_EFFECT::update_glitch()
@@ -581,7 +629,27 @@ void GLITCH_DELAY_EFFECT::update_glitch()
 
   if( m_play_head.initial_loop_crossfade_complete() )
   {
-    m_play_head.shift_loop( m_speed_in_samples );
+    if( m_loop_moving )
+    {
+      m_play_head.shift_loop( m_speed_in_samples );
+    }
+    else if( !m_play_head.is_next_loop_set() )
+    {
+      // determine next loop - will be played when the current loop finishes
+      float r                 = (random(1000) / 1000.0f);
+      r                       -= 0.5f; // r = -0.5 => 0.5
+      const int jitter_offset = MAX_JITTER_SIZE * r;
+
+      const int next_loop_start   = m_delay_buffer.wrap_to_buffer( m_play_head.loop_start() + jitter_offset );
+
+      r           = (random(1000) / 1000.0f) * 0.25f;
+      r           = 1.0f + ( r - 0.125f ); // r = 0.875 => 1.125
+      const int next_loop_size    = round( lerp<float>( MIN_LOOP_SIZE_IN_SAMPLES, MAX_LOOP_SIZE_IN_SAMPLES, m_loop_size_ratio * r ) );
+
+      const int next_loop_end     = m_delay_buffer.wrap_to_buffer( next_loop_start + next_loop_size );
+
+      m_play_head.set_next_loop( next_loop_start, next_loop_end );
+    }
   }
 
   ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "GLITCH_DELAY_EFFECT::update_glitch() shift error" );
@@ -590,6 +658,7 @@ void GLITCH_DELAY_EFFECT::update_glitch()
 void GLITCH_DELAY_EFFECT::update()
 {        
   m_delay_buffer.set_bit_depth( m_next_sample_size_in_bits );
+  m_loop_moving               = m_next_loop_moving;
 
   update_glitch();
 
@@ -622,5 +691,10 @@ void GLITCH_DELAY_EFFECT::set_speed( float speed )
 void GLITCH_DELAY_EFFECT::set_loop_size( float loop_size )
 {
   m_loop_size_ratio = loop_size;
+}
+
+void GLITCH_DELAY_EFFECT::set_loop_moving( bool moving )
+{
+  m_next_loop_moving = moving;
 }
 

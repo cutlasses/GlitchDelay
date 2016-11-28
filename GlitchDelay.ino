@@ -156,6 +156,9 @@ void loop()
   const float size = clamp( glitch_delay_interface.loop_size_dial().value(), 0.0f, 1.0f );
   glitch_delay_effect.set_loop_size( size );
 
+  const bool move_loop = glitch_delay_interface.mode() == 0;
+  glitch_delay_effect.set_loop_moving( move_loop );
+
 #ifdef DEBUG_OUTPUT
 
   static int count = 0;

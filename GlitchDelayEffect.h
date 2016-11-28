@@ -21,6 +21,9 @@ class PLAY_HEAD
   int                         m_loop_start;
   int                         m_loop_end;
 
+  int                         m_next_loop_start;
+  int                         m_next_loop_end;
+
   bool                        m_initial_loop_crossfade_complete;
 
   int16_t                     read_sample_with_cross_fade();
@@ -34,16 +37,19 @@ public:
 
   int                         loop_start() const;
   int                         loop_end() const;
+  int                         loop_size() const;
 
   bool                        position_inside_section( int position, int start, int end ) const;
   bool                        position_inside_next_read( int position, int read_size ) const;
   bool                        crossfade_active() const;
   bool                        initial_loop_crossfade_complete() const;
+  bool                        is_next_loop_set() const;
 
   void                        set_play_head( int offset_from_write_head );
   void                        read_from_play_head( int16_t* dest, int size );  
 
   void                        enable_loop( int start, int end );
+  void                        set_next_loop( int start, int end );
   void                        disable_loop();
   void                        shift_loop( int offset );
 
@@ -111,10 +117,11 @@ class GLITCH_DELAY_EFFECT : public AudioStream
   float                 m_loop_size_ratio;
   int                   m_loop_size_in_samples;
 
+  bool                  m_loop_moving;
+
   // store 'next' values, otherwise interrupt could be called during calculation of values
   int                   m_next_sample_size_in_bits;
-
-  bool                  m_shift_forwards;
+  bool                  m_next_loop_moving;
 
   void                  start_glitch();
   void                  update_glitch();
@@ -128,6 +135,7 @@ public:
   void                  set_bit_depth( int sample_size_in_bits );
   void                  set_speed( float speed );
   void                  set_loop_size( float loop_size );
+  void                  set_loop_moving( bool moving );
 };
 
 
