@@ -586,7 +586,8 @@ GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
   m_loop_size_in_samples(MAX_LOOP_SIZE_IN_SAMPLES),
   m_loop_moving(true),
   m_next_sample_size_in_bits(12),
-  m_next_loop_moving(true)
+  m_next_loop_moving(true),
+  m_next_beat(false)
 {
   start_glitch();
 }
@@ -622,7 +623,7 @@ void GLITCH_DELAY_EFFECT::update_glitch()
 
   // check whether the write head is about to run over the read head, in which case cross fade read head to new position
   const int extended_start = m_delay_buffer.wrap_to_buffer( m_play_head.loop_start() - ( FIXED_FADE_TIME_SAMPLES + FIXED_FADE_TIME_SAMPLES + AUDIO_BLOCK_SAMPLES ) );
-  if( m_play_head.position_inside_section( m_delay_buffer.write_head(), extended_start, m_play_head.loop_end() ) )
+  if( m_play_head.position_inside_section( m_delay_buffer.write_head(), extended_start, m_play_head.loop_end() ) || m_next_beat )
   {
     start_glitch();
   }
@@ -687,6 +688,8 @@ void GLITCH_DELAY_EFFECT::update()
   
     release( block );
   }
+
+  m_next_beat = false;
 }
 
 void GLITCH_DELAY_EFFECT::set_bit_depth( int sample_size_in_bits )
@@ -708,5 +711,10 @@ void GLITCH_DELAY_EFFECT::set_loop_size( float loop_size )
 void GLITCH_DELAY_EFFECT::set_loop_moving( bool moving )
 {
   m_next_loop_moving = moving;
+}
+
+void GLITCH_DELAY_EFFECT::set_beat()
+{
+  m_next_beat = true;
 }
 

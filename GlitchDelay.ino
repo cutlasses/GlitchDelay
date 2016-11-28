@@ -159,6 +159,11 @@ void loop()
   const bool move_loop = glitch_delay_interface.mode() == 0;
   glitch_delay_effect.set_loop_moving( move_loop );
 
+  if( glitch_delay_interface.tap_bpm().beat_type() == TAP_BPM::AUTO_BEAT )
+  {
+    glitch_delay_effect.set_beat();
+  }
+
 #ifdef DEBUG_OUTPUT
 
   static int count = 0;

@@ -122,6 +122,7 @@ class GLITCH_DELAY_EFFECT : public AudioStream
   // store 'next' values, otherwise interrupt could be called during calculation of values
   int                   m_next_sample_size_in_bits;
   bool                  m_next_loop_moving;
+  bool                  m_next_beat;
 
   void                  start_glitch();
   void                  update_glitch();
@@ -136,6 +137,8 @@ public:
   void                  set_speed( float speed );
   void                  set_loop_size( float loop_size );
   void                  set_loop_moving( bool moving );
+
+  void                  set_beat();
 };
 
 
