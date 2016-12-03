@@ -9,8 +9,8 @@ class GLITCH_DELAY_INTERFACE
   static const int      LOOP_SPEED_DIAL_PIN             = 17;
   static const int      FEEDBACK_DIAL_PIN               = 21;
   static const int      MIX_DIAL_PIN                    = 16;
-  static const int      MODE_BUTTON_PIN                 = 2;
-  static const int      BPM_BUTTON_PIN                  = 1;
+  static const int      MODE_BUTTON_PIN                 = 1;
+  static const int      BPM_BUTTON_PIN                  = 2;
   static const int      LED_1_PIN                       = 4;
   static const int      LED_2_PIN                       = 3;
   static const int      LED_3_PIN                       = 5;

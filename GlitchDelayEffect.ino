@@ -639,17 +639,17 @@ void GLITCH_DELAY_EFFECT::update_glitch()
       {
         // determine next loop - will be played when the current loop finishes
         
-        float r                 = (random(1000) / 1000.0f);
-        r                       -= 0.5f; // r = -0.5 => 0.5
-        const int jitter_offset = MAX_JITTER_SIZE * r * m_speed_ratio;
+        float r                       = (random(1000) / 1000.0f);
+        r                             -= 0.5f; // r = -0.5 => 0.5
+        const int jitter_offset       = MAX_JITTER_SIZE * r * m_speed_ratio;
   
-        const int next_loop_start   = m_delay_buffer.wrap_to_buffer( m_play_head.loop_start() + jitter_offset );
+        const int next_loop_start     = m_delay_buffer.wrap_to_buffer( m_play_head.loop_start() + jitter_offset );
   
-        r           = (random(1000) / 1000.0f) * 0.25f;
-        r           = 1.0f + ( r - 0.125f ); // r = 0.875 => 1.125
-        const int next_loop_size    = round( lerp<float>( MIN_LOOP_SIZE_IN_SAMPLES, MAX_LOOP_SIZE_IN_SAMPLES, m_loop_size_ratio * r ) );
+        r                             = (random(1000) / 1000.0f) * 0.25f;
+        r                             = 1.0f + ( r - 0.125f ); // r = 0.875 => 1.125
+        const int next_loop_size      = round( lerp<float>( MIN_LOOP_SIZE_IN_SAMPLES, MAX_LOOP_SIZE_IN_SAMPLES, m_loop_size_ratio * r ) );
   
-        const int next_loop_end     = m_delay_buffer.wrap_to_buffer( next_loop_start + next_loop_size );
+        const int next_loop_end       = m_delay_buffer.wrap_to_buffer( next_loop_start + next_loop_size );
   
         m_play_head.set_next_loop( next_loop_start, next_loop_end );
         
