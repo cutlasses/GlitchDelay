@@ -37,6 +37,8 @@ public:
 
   int                         loop_start() const;
   int                         loop_end() const;
+  int                         next_loop_start() const;
+  int                         next_loop_end() const;
   int                         loop_size() const;
 
   bool                        position_inside_section( int position, int start, int end ) const;

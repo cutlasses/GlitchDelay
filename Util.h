@@ -4,19 +4,26 @@
 
 #ifdef DEBUG_OUTPUT
 
+extern bool serial_port_initialised;
+
 bool _assert_fail( const char* assert, const char* msg )
 {
-  Serial.print(assert);
-  Serial.print(" ");
-  Serial.print(msg);
-  Serial.print("\n");
-
+  if( serial_port_initialised )
+  {
+    Serial.print(assert);
+    Serial.print(" ");
+    Serial.print(msg);
+    Serial.print("\n");
+  }
+  
   return true;
 }
 
 #define ASSERT_MSG(x, msg) ((void)((x) || (_assert_fail(#x,msg))))
+#define DEBUG_TEXT(x) if(serial_port_initialised) Serial.print(x);
 #else
 #define ASSERT_MSG(x, msg)
+#define DEBUG_TEXT(x)
 #endif
 
 /////////////////////////////////////////////////////

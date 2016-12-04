@@ -72,6 +72,8 @@ void setup()
   Serial.begin(9600);
 
 #ifdef DEBUG_OUTPUT
+  serial_port_initialised = true;
+
   Serial.print("Setup started!\n");
 #endif // DEBUG_OUTPUT
 
