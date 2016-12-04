@@ -20,9 +20,11 @@ class PLAY_HEAD
 
   int                         m_loop_start;
   int                         m_loop_end;
+  int                         m_shift_speed;
 
-  int                         m_next_loop_start;
-  int                         m_next_loop_end;
+  float                       m_next_loop_size_ratio;
+  float                       m_next_shift_speed_ratio;
+  float                       m_jitter_ratio;
 
   bool                        m_initial_loop_crossfade_complete;
 
@@ -37,23 +39,26 @@ public:
 
   int                         loop_start() const;
   int                         loop_end() const;
-  int                         next_loop_start() const;
-  int                         next_loop_end() const;
-  int                         loop_size() const;
+  int                         buffered_loop_start() const;
+  int                         current_loop_size() const;
 
   bool                        position_inside_section( int position, int start, int end ) const;
   bool                        position_inside_next_read( int position, int read_size ) const;
   bool                        crossfade_active() const;
   bool                        initial_loop_crossfade_complete() const;
-  bool                        is_next_loop_set() const;
 
+  void                        set_loop_size( float loop_size_in_samples );
+  void                        set_shift_speed( float speed );
+  void                        set_jitter( float jitter );
   void                        set_play_head( int offset_from_write_head );
+  void                        set_next_loop();
+
+  void                        set_loop_behind_write_head();
+  
   void                        read_from_play_head( int16_t* dest, int size );  
 
   void                        enable_loop( int start, int end );
-  void                        set_next_loop( int start, int end );
   void                        disable_loop();
-  void                        shift_loop( int offset );
 
 #ifdef DEBUG_OUTPUT
   void                        debug_output();
@@ -97,7 +102,6 @@ public:
   void                        fade_in_write();
 
   void                        set_write_head( int new_head );
-  void                        set_loop_behind_write_head( PLAY_HEAD& play_head, int loop_size, int speed_in_samples ) const;
 
 #ifdef DEBUG_OUTPUT
   void                        debug_output();
@@ -125,9 +129,6 @@ class GLITCH_DELAY_EFFECT : public AudioStream
   int                   m_next_sample_size_in_bits;
   bool                  m_next_loop_moving;
   bool                  m_next_beat;
-
-  void                  start_glitch();
-  void                  update_glitch();
   
 public:
 
