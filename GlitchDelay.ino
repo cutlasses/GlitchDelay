@@ -28,6 +28,7 @@ AudioOutputAnalog           audio_output;
 
 GLITCH_DELAY_EFFECT      glitch_delay_effect;
 AudioMixer4              delay_mixer;
+AudioMixer4              glitch_mixer;
 AudioMixer4              wet_dry_mixer;
 //AudioEffectDelay         audio_delay;
 
@@ -42,22 +43,24 @@ AudioPlaySdRaw           raw_player;
 //AudioConnection          patch_cord_L1( raw_player, 0, audio_output, 0 );
 //AudioConnection          patch_cord_R1( raw_player, 1, audio_output, 1 );
 AudioConnection          patch_cord_L1( raw_player, 0, delay_mixer, 0 );
-//AudioConnection          patch_cord_L2( delay_mixer, 0, audio_delay, 0 );
 AudioConnection          patch_cord_L2( delay_mixer, 0, glitch_delay_effect, 0 );
-AudioConnection          patch_cord_L3( glitch_delay_effect, 0, delay_mixer, FEEDBACK_CHANNEL );
-AudioConnection          patch_cord_L4( glitch_delay_effect, 0, wet_dry_mixer, WET_CHANNEL );
-AudioConnection          patch_cord_L5( raw_player, 0, wet_dry_mixer, DRY_CHANNEL );
-AudioConnection          patch_cord_L6( wet_dry_mixer, 0, audio_output, 0 );
-//AudioConnection          patch_cord_L1( audio_input, 0, audio_output, 0 );    // left channel passes straight through (for testing)
-//AudioConnection          patch_cord_R1( audio_input, 1, audio_output, 1 );      // right channel passes straight through
+AudioConnection          patch_cord_L3( glitch_delay_effect, 0, glitch_mixer, 0 );
+AudioConnection          patch_cord_L4( glitch_delay_effect, 1, glitch_mixer, 1 );
+AudioConnection          patch_cord_L5( glitch_delay_effect, 2, glitch_mixer, 2 );
+AudioConnection          patch_cord_L6( glitch_mixer, 0, delay_mixer, FEEDBACK_CHANNEL );
+AudioConnection          patch_cord_L7( glitch_mixer, 0, wet_dry_mixer, WET_CHANNEL );
+AudioConnection          patch_cord_L8( raw_player, 0, wet_dry_mixer, DRY_CHANNEL );
+AudioConnection          patch_cord_L9( wet_dry_mixer, 0, audio_output, 0 );
 #else // STANDALONE_AUDIO
 AudioConnection          patch_cord_L1( audio_input, 0, delay_mixer, 0 );
-//AudioConnection          patch_cord_L2( delay_mixer, 0, audio_delay, 0 );
 AudioConnection          patch_cord_L2( delay_mixer, 0, glitch_delay_effect, 0 );
-AudioConnection          patch_cord_L3( glitch_delay_effect, 0, delay_mixer, FEEDBACK_CHANNEL );
-AudioConnection          patch_cord_L4( glitch_delay_effect, 0, wet_dry_mixer, WET_CHANNEL );
-AudioConnection          patch_cord_L5( audio_input, 0, wet_dry_mixer, DRY_CHANNEL );
-AudioConnection          patch_cord_L6( wet_dry_mixer, 0, audio_output, 0 );
+AudioConnection          patch_cord_L3( glitch_delay_effect, 0, glitch_mixer, 0 );
+AudioConnection          patch_cord_L4( glitch_delay_effect, 1, glitch_mixer, 1 );
+AudioConnection          patch_cord_L5( glitch_delay_effect, 2, glitch_mixer, 2 );
+AudioConnection          patch_cord_L6( glitch_mixer, 0, delay_mixer, FEEDBACK_CHANNEL );
+AudioConnection          patch_cord_L7( glitch_mixer, 0, wet_dry_mixer, WET_CHANNEL );
+AudioConnection          patch_cord_L8( audio_input, 0, wet_dry_mixer, DRY_CHANNEL );
+AudioConnection          patch_cord_L9( wet_dry_mixer, 0, audio_output, 0 );
 //AudioConnection          patch_cord_L1( audio_input, 0, audio_output, 0 );    // left channel passes straight through (for testing)
 AudioConnection          patch_cord_R1( audio_input, 1, audio_output, 1 );      // right channel passes straight through
 #endif // !STANDALONE_AUDIO
@@ -112,6 +115,10 @@ void setup()
 
   delay_mixer.gain( 0, 0.5f );
   delay_mixer.gain( 1, 0.25f );
+
+  glitch_mixer.gain( 0, 0.25f );
+  glitch_mixer.gain( 1, 0.5f );
+  glitch_mixer.gain( 2, 0.25f );
   
 #ifdef DEBUG_OUTPUT
   Serial.print("Setup finished!\n");

@@ -60,11 +60,11 @@ int cross_fade_samples( int x, int y, float t )
 
 /////////////////////////////////////////////////////////////////////
 
-PLAY_HEAD::PLAY_HEAD( const DELAY_BUFFER& delay_buffer ) :
+PLAY_HEAD::PLAY_HEAD( const DELAY_BUFFER& delay_buffer, float play_speed ) :
   m_delay_buffer( delay_buffer ),
   m_current_play_head( 0.0f ),
   m_destination_play_head( 0.0f ),
-  m_play_speed( 2.5f ),
+  m_play_speed( play_speed ),
   m_fade_samples_remaining( 0 ),
   m_loop_start( -1 ),
   m_loop_end( -1 ),
@@ -699,7 +699,7 @@ GLITCH_DELAY_EFFECT::GLITCH_DELAY_EFFECT() :
   AudioStream( 1, m_input_queue_array ),
   m_input_queue_array(),
   m_delay_buffer(),
-  m_play_head(m_delay_buffer),
+  m_play_heads( { PLAY_HEAD( m_delay_buffer, 0.5f ), PLAY_HEAD( m_delay_buffer, 1.0f ), PLAY_HEAD( m_delay_buffer, 2.0f ) } ),
   m_speed_ratio(1.0f),
   m_speed_in_samples(MAX_SHIFT_SPEED),
   m_loop_size_ratio(1.0f),
@@ -717,48 +717,60 @@ void GLITCH_DELAY_EFFECT::update()
   m_delay_buffer.set_bit_depth( m_next_sample_size_in_bits );
   m_loop_moving               = m_next_loop_moving;
 
-  if( m_loop_moving )
+  for( int pi = 0; pi < NUM_PLAY_HEADS; ++pi )
   {
-    m_play_head.set_shift_speed( m_speed_ratio );
-  }
-  else
-  {
-    m_play_head.set_shift_speed( 0.0f );
-    m_play_head.set_jitter( m_speed_ratio );
-  }
-
-  m_play_head.set_loop_size( m_loop_size_ratio );
-
-  // check whether the write head is about to run over the read head, in which case cross fade read head to new position
-  if( m_play_head.position_inside_section( m_delay_buffer.write_head(), m_play_head.buffered_loop_start(), m_play_head.loop_end() ) )
-  {
-    m_play_head.set_loop_behind_write_head();
-  }
-  else if( m_next_beat && !m_play_head.crossfade_active() )
-  {
-    m_play_head.set_next_loop();
-    m_play_head.set_loop_behind_write_head();
+    if( m_loop_moving )
+    {
+      m_play_heads[pi].set_shift_speed( m_speed_ratio );
+    }
+    else
+    {
+      m_play_heads[pi].set_shift_speed( 0.0f );
+      m_play_heads[pi].set_jitter( m_speed_ratio );
+    }
+  
+    m_play_heads[pi].set_loop_size( m_loop_size_ratio );
+  
+    // check whether the write head is about to run over the read head, in which case cross fade read head to new position
+    if( m_play_heads[pi].position_inside_section( m_delay_buffer.write_head(), m_play_heads[pi].buffered_loop_start(), m_play_heads[pi].loop_end() ) )
+    {
+      m_play_heads[pi].set_loop_behind_write_head();
+    }
+    else if( m_next_beat && !m_play_heads[pi].crossfade_active() )
+    {
+      m_play_heads[pi].set_next_loop();
+      m_play_heads[pi].set_loop_behind_write_head();
+    }
   }
   m_next_beat = false;
   
 
-  audio_block_t* block        = receiveWritable();
+  audio_block_t* read_block        = receiveReadOnly();
 
-  if( block != nullptr )
+  if( read_block != nullptr )
   {
-    m_delay_buffer.write_to_buffer( block->data, AUDIO_BLOCK_SAMPLES );
+    m_delay_buffer.write_to_buffer( read_block->data, AUDIO_BLOCK_SAMPLES );
+    release( read_block );
 
-    ASSERT_MSG( !m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "Non - reading over write buffer\n" ); // position after write head is OLD DATA
-    if( m_play_head.position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ) )
+    for( int pi = 0; pi < NUM_PLAY_HEADS; ++pi )
     {
-      m_play_head.debug_output();
-      m_delay_buffer.debug_output();
-    }
-    m_play_head.read_from_play_head( block->data, AUDIO_BLOCK_SAMPLES );
+      audio_block_t* write_block = allocate();
 
-    transmit( block, 0 );
-  
-    release( block );
+      if( write_block != nullptr )
+      {
+        ASSERT_MSG( !m_play_heads[pi].position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "Non - reading over write buffer\n" ); // position after write head is OLD DATA
+        if( m_play_heads[pi].position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ) )
+        {
+          m_play_heads[pi].debug_output();
+          m_delay_buffer.debug_output();
+        }
+        m_play_heads[pi].read_from_play_head( write_block->data, AUDIO_BLOCK_SAMPLES );
+    
+        transmit( write_block, pi );
+    
+        release( write_block ); // note is this legal? may want to allocate a new block each time
+      }
+    }
   }
 }
 

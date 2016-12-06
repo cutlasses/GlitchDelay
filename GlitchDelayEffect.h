@@ -35,7 +35,7 @@ class PLAY_HEAD
    
 public:
 
-  PLAY_HEAD( const DELAY_BUFFER& delay_buffer );
+  PLAY_HEAD( const DELAY_BUFFER& delay_buffer, float play_speed );
 
   int                         current_position() const;
   int                         destination_position() const;
@@ -117,10 +117,12 @@ public:
 
 class GLITCH_DELAY_EFFECT : public AudioStream
 {  
+  static const int NUM_PLAY_HEADS = 3;
+  
   audio_block_t*        m_input_queue_array[1];
   DELAY_BUFFER          m_delay_buffer;
 
-  PLAY_HEAD             m_play_head;
+  PLAY_HEAD             m_play_heads[NUM_PLAY_HEADS];
 
   float                 m_speed_ratio;
   int                   m_speed_in_samples;
