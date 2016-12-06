@@ -259,15 +259,6 @@ void PLAY_HEAD::set_next_loop()
     {
       set_loop_behind_write_head();
     }
-
-    DEBUG_TEXT("set next loop ");
-    DEBUG_TEXT("ls:");
-    DEBUG_TEXT(m_loop_start);
-    DEBUG_TEXT(" le:");
-    DEBUG_TEXT(m_loop_end);
-    DEBUG_TEXT(" wh:");
-    DEBUG_TEXT(m_delay_buffer.write_head());
-    DEBUG_TEXT("\n");
     
     set_play_head( m_loop_start );
 }
@@ -348,16 +339,6 @@ void PLAY_HEAD::set_loop_behind_write_head()
   int loop_end                            = m_delay_buffer.write_head() - ( play_head_to_write_head_buffer_size() + m_shift_speed );
   loop_end                                = m_delay_buffer.wrap_to_buffer( loop_end );
   const int loop_start                    = m_delay_buffer.wrap_to_buffer( loop_end - loop_size );
-
-  DEBUG_TEXT("set_loop_behind_write_head ");
-  DEBUG_TEXT("ls:");
-  DEBUG_TEXT(loop_start);
-  DEBUG_TEXT(" le:");
-  DEBUG_TEXT(loop_end);
-  DEBUG_TEXT(" wh:");
-  DEBUG_TEXT(m_delay_buffer.write_head());
-  DEBUG_TEXT("\n");
-
 
   ASSERT_MSG( loop_size + FIXED_FADE_TIME_SAMPLES + 1 < DELAY_BUFFER_SIZE_IN_BYTES, "Loop size too large\n" );
   ASSERT_MSG( loop_size > FIXED_FADE_TIME_SAMPLES * 2, "Loop size too small\n" );
