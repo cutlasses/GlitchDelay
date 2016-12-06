@@ -14,8 +14,9 @@ class PLAY_HEAD
 {
   const DELAY_BUFFER&         m_delay_buffer;     // TODO pass in to save storage?
   
-  int                         m_current_play_head;
-  int                         m_destination_play_head;
+  float                       m_current_play_head;
+  float                       m_destination_play_head;
+  float                       m_play_speed;
   int                         m_fade_samples_remaining;
 
   int                         m_loop_start;
@@ -94,8 +95,10 @@ public:
 
   void                        write_sample( int16_t sample, int index );
   int16_t                     read_sample( int index ) const;
+  int16_t                     read_sample_with_speed( float index, float speed ) const;
 
   void                        increment_head( int& head ) const;
+  void                        increment_head( float& head, float speed ) const;
   
   void                        write_to_buffer( const int16_t* source, int size );
 

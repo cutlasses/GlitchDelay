@@ -62,8 +62,9 @@ int cross_fade_samples( int x, int y, float t )
 
 PLAY_HEAD::PLAY_HEAD( const DELAY_BUFFER& delay_buffer ) :
   m_delay_buffer( delay_buffer ),
-  m_current_play_head( 0 ),
-  m_destination_play_head( 0 ),
+  m_current_play_head( 0.0f ),
+  m_destination_play_head( 0.0f ),
+  m_play_speed( 2.5f ),
   m_fade_samples_remaining( 0 ),
   m_loop_start( -1 ),
   m_loop_end( -1 ),
@@ -272,17 +273,17 @@ int16_t PLAY_HEAD::read_sample_with_cross_fade()
   // cross-fading
   if( m_fade_samples_remaining > 0 )
   {
-    int16_t current_sample            = m_delay_buffer.read_sample( m_current_play_head );
+    int16_t current_sample            = m_delay_buffer.read_sample_with_speed( m_current_play_head, m_play_speed );
 
-    int16_t destination_sample        = m_delay_buffer.read_sample( m_destination_play_head );
+    int16_t destination_sample        = m_delay_buffer.read_sample_with_speed( m_destination_play_head, m_play_speed );
 
     const float t                     = static_cast<float>(m_fade_samples_remaining) / FIXED_FADE_TIME_SAMPLES; // t=0 at destination, t=1 at current
     --m_fade_samples_remaining;
 
     sample                            = cross_fade_samples( destination_sample, current_sample, t );
 
-    m_delay_buffer.increment_head( m_current_play_head );
-    m_delay_buffer.increment_head( m_destination_play_head );
+    m_delay_buffer.increment_head( m_current_play_head, m_play_speed );
+    m_delay_buffer.increment_head( m_destination_play_head, m_play_speed );
   }
   // not cross-fading
   else
@@ -292,7 +293,7 @@ int16_t PLAY_HEAD::read_sample_with_cross_fade()
     m_current_play_head               = m_destination_play_head;
     sample                            = m_delay_buffer.read_sample( m_current_play_head );
     
-    m_delay_buffer.increment_head( m_current_play_head );
+    m_delay_buffer.increment_head( m_current_play_head, m_play_speed );
     m_destination_play_head           = m_current_play_head;
   }
 
@@ -571,6 +572,37 @@ int16_t DELAY_BUFFER::read_sample( int index ) const
   return 0;
 }
 
+int16_t DELAY_BUFFER::read_sample_with_speed( float index, float speed ) const
+{
+  if( speed < 1.0f )
+  {
+    float nif = index;
+    increment_head( nif, speed );
+
+    int curr_index = index;
+    int next_index = nif;
+
+    if( curr_index == next_index )
+    {
+      // both current and next are in the same sample
+      return read_sample( curr_index );
+    }
+    else
+    {
+      // crossing 2 samples - calculate how much of each sample to use, then lerp between them
+      // use the fractional part - if 0.3 'into' next sample, then we mix 0.3 of next and 0.7 of current
+      float int_part;
+      float rem             = modff( nif, &int_part );
+      const float t         = rem / speed;      
+      return lerp( read_sample(curr_index), read_sample(next_index), t );   
+    }
+  }
+  else
+  {
+    return read_sample( index );
+  }
+}
+
 void DELAY_BUFFER::increment_head( int& head ) const
 {
   ++head;
@@ -579,6 +611,19 @@ void DELAY_BUFFER::increment_head( int& head ) const
   {
     head = 0;
   }
+}
+
+void DELAY_BUFFER::increment_head( float& head, float speed ) const
+{
+    head                    += speed;
+    if( head >= m_buffer_size_in_samples )
+    {
+      const float rem       = head - m_buffer_size_in_samples;
+      head                  = rem;
+    }
+
+    ASSERT_MSG( truncf(head) >= 0 && truncf(head) < m_buffer_size_in_samples, "DELAY_BUFFER::increment_head()" );
+
 }
 
 void DELAY_BUFFER::write_to_buffer( const int16_t* source, int size )
@@ -691,8 +736,6 @@ void GLITCH_DELAY_EFFECT::update()
   }
   else if( m_next_beat && !m_play_head.crossfade_active() )
   {
-    DEBUG_TEXT("BEAT");
-
     m_play_head.set_next_loop();
     m_play_head.set_loop_behind_write_head();
   }
