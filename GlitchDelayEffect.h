@@ -2,7 +2,7 @@
 
 #include <AudioStream.h>
 
-#define DELAY_BUFFER_SIZE_IN_BYTES     1024*240      // 250k
+#define DELAY_BUFFER_SIZE_IN_BYTES     1024*240      // 240k
 
 ////////////////////////////////////
 
@@ -20,6 +20,7 @@ class PLAY_HEAD
 
   int                         m_loop_start;
   int                         m_loop_end;
+  int                         m_unjittered_loop_start;
   int                         m_shift_speed;
 
   float                       m_next_loop_size_ratio;
@@ -28,6 +29,7 @@ class PLAY_HEAD
 
   bool                        m_initial_loop_crossfade_complete;
 
+  int                         play_head_to_write_head_buffer_size() const;
   int16_t                     read_sample_with_cross_fade();
    
 public:
