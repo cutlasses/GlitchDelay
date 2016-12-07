@@ -116,9 +116,9 @@ void setup()
   delay_mixer.gain( 0, 0.5f );
   delay_mixer.gain( 1, 0.25f );
 
-  glitch_mixer.gain( 0, 0.25f );
+  glitch_mixer.gain( 0, 0.3f );
   glitch_mixer.gain( 1, 0.5f );
-  glitch_mixer.gain( 2, 0.25f );
+  glitch_mixer.gain( 2, 0.2f );
   
 #ifdef DEBUG_OUTPUT
   Serial.print("Setup finished!\n");

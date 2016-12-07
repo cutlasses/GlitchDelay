@@ -759,11 +759,6 @@ void GLITCH_DELAY_EFFECT::update()
       if( write_block != nullptr )
       {
         ASSERT_MSG( !m_play_heads[pi].position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ), "Non - reading over write buffer\n" ); // position after write head is OLD DATA
-        if( m_play_heads[pi].position_inside_next_read( m_delay_buffer.write_head(), AUDIO_BLOCK_SAMPLES ) )
-        {
-          m_play_heads[pi].debug_output();
-          m_delay_buffer.debug_output();
-        }
         m_play_heads[pi].read_from_play_head( write_block->data, AUDIO_BLOCK_SAMPLES );
     
         transmit( write_block, pi );
