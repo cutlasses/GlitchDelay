@@ -1,67 +1,141 @@
-///////////////////////////////////////////////
+#pragma once
 
-const int NUM_DIALS = 2;
-#include <Bounce.h>
+#include "CompileSwitches.h"
 
-const int MIDI_CHANNEL = 2;
+#ifdef DEBUG_OUTPUT
 
-///////////////////////////////////////////////
+extern bool serial_port_initialised;
 
-class MIDI_DIAL
+bool _assert_fail( const char* assert, const char* msg )
 {
-  const int     m_data_pin;
-  const int     m_midi_cc;
-  int           m_current_value;
-    
+  if( serial_port_initialised )
+  {
+    Serial.print(assert);
+    Serial.print(" ");
+    Serial.print(msg);
+    Serial.print("\n");
+  }
+  
+  return true;
+}
+
+#define ASSERT_MSG(x, msg) ((void)((x) || (_assert_fail(#x,msg))))
+#define DEBUG_TEXT(x) if(serial_port_initialised) Serial.print(x);
+#else
+#define ASSERT_MSG(x, msg)
+#define DEBUG_TEXT(x)
+#endif
+
+/////////////////////////////////////////////////////
+
+template <typename T>
+T clamp( const T& value, const T& min, const T& max )
+{
+  if( value < min )
+  {
+    return min;
+  }
+  if( value > max )
+  {
+    return max;
+  }
+  return value;
+}
+
+template <typename T>
+T max_val( const T& v1, const T& v2 )
+{
+  if( v1 > v2 )
+  {
+    return v1;
+  }
+  else
+  {
+    return v2;
+  }
+}
+
+template <typename T>
+T min_val( const T& v1, const T& v2 )
+{
+  if( v1 < v2 )
+  {
+    return v1;
+  }
+  else
+  {
+    return v2;
+  }
+}
+
+/////////////////////////////////////////////////////
+
+template <typename T>
+T lerp( const T& v1, const T& v2, float t )
+{
+  return v1 + ( (v2 - v1) * t );
+}
+
+/////////////////////////////////////////////////////
+
+int trunc_to_int( float v )
+{
+  return static_cast<int>( trunc(v) );
+}
+
+/////////////////////////////////////////////////////
+
+template < typename TYPE, int CAPACITY >
+class RUNNING_AVERAGE
+{
+  TYPE                    m_values[ CAPACITY ];
+  int                     m_current;
+  int                     m_size;
+
 public:
 
-   MIDI_DIAL( int data_pin, int midi_cc ) :
-    m_data_pin( data_pin ),
-    m_midi_cc( midi_cc ),
-    m_current_value( 0 )
+  RUNNING_AVERAGE() :
+    m_values(),
+    m_current(0),
+    m_size(0)
   {
-  
   }
 
-  bool update()
+  void add( TYPE value )
   {
-    int new_value = analogRead( m_data_pin );
-  
-    if( new_value != m_current_value )
+    m_values[ m_current ] = value;
+    m_current             = ( m_current + 1 ) % CAPACITY;
+    ++m_size;
+    if( m_size > CAPACITY )
     {
-      static const float scale        = 127.0f / 1024.0f;
-      const int current_value_scaled  = m_current_value * scale;
-      const int new_value_scaled      = new_value * scale;
-      if( current_value_scaled != new_value_scaled )
-      {
-        usbMIDI.sendControlChange( m_midi_cc, new_value_scaled, MIDI_CHANNEL );
-      }
-
-      m_current_value = new_value;
-      
-      return true;
+      m_size              = CAPACITY;
     }
+  }
+
+  void reset()
+  {
+    m_size                = 0;
+    m_current             = 0;
+  }
   
-    return false;
+  TYPE average() const
+  {
+    if( m_size == 0 )
+    {
+      return 0;  
+    }
+    
+    TYPE avg = 0;
+    for( int x = 0; x < m_size; ++x )
+    {
+      avg += m_values[ x ];
+    }
+
+    return avg / m_size;
+  }
+
+  int size() const
+  {
+    return m_size;
   }
 };
-
-///////////////////////////////////////////////
-
-MIDI_DIAL g_dials[NUM_DIALS] = { MIDI_DIAL( 0, 14 ), MIDI_DIAL( 1, 15 ) };  // use MIDI CC 14 and 15, marked as undefined, ensures it doesn't clash with my midi pedal
-
-///////////////////////////////////////////////
-
-void setup()
-{
-  // put your setup code here, to run once:
-}
-
-void loop()
-{
-  // put your main code here, to run repeatedly:
-  for( int i = 0; i < NUM_DIALS; ++i )
-  {
-    g_dials[i].update();
-  }
-}
